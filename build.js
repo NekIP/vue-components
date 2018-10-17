@@ -165,6 +165,34 @@ module.exports = g;
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["a"] = ({
 	name: 'report-table',
@@ -178,88 +206,114 @@ module.exports = g;
 			default: [25, 50, 100, 0]
 		}
 	},
-	data: function () {
+	data() {
 		return {
-			current: {
-				sorting: {
-					name: '',
-					ascending: false
-				},
-				filter: {
-					name: '',
-					mode: 'eq'
-				},
-				grouping: [],
-				page: {
-					size: this.pageSizes[0],
-					number: 1
-				},
-				movableColumn: {
-					dragable: '',
-					dropable: ''
-				}
+			sorting: {
+				column: null,
+				ascending: false
 			},
-			currentColumns: this.columns.map(x => x),
-			groupAreaName: '*group-area*'
+			filteringColumn: {
+				id: '',
+				mode: 'eq'
+			},
+			groupingColumns: [],
+			page: {
+				size: this.pageSizes[0],
+				number: 1
+			},
+			movableColumn: {
+				dragable: null,
+				dropable: null
+			},
+			columnsInfo: this.getColumnsInfo(),
+			groupAreaName: '*group-area*',
+			groupDelimeterChar: ';' /* &#8006; */
 			/*columnsCash: null*/
 		}
 	},
 	computed: {
-		cols: function () {
+		cols() {
 			let result = {};
-			for (let i in this.currentColumns) {
-				let column = this.currentColumns[i];
-				result[column] = this.data.map(x => x[column]);
+			for (let i in this.columnsInfo) {
+				let column = this.columnsInfo[i];
+				result[column.id] = this.data.map(x => x[column.id]);
 			}
 			return result;
 		},
-		pageCount: function () {
-			if (this.current.page.size == 0) {
+		pageCount() {
+			if (this.page.size == 0) {
 				return 1;
 			}
-			return Math.ceil(this.data.length / this.current.page.size);
+			return Math.ceil(this.data.length / this.page.size);
 		},
-		group: function () {
+		groupedData() {
 			let data = this.data;
-			let columns = this.current.grouping;
-			let result = [];
-			for (let j = 0; j < data.length; j++) {
-				for (let k = j; k < data.length; k++) {
-					let equal = true;
-					let values = [];
-					for (let i = 0; i < columns.length; i++) {
-						if (data[j][columns[i]] != data[k][columns[i]]) {
-							equal = false;
-							break;
-						}
-						values.push(data[k][columns[i]]);
+			let columns = this.groupingColumns;
+			let result = {};
+			for (let i = 0; i < data.length; i++) {
+				let item = data[i];
+				let key = "";
+				for (let j = 0; j < columns.length; j++) {
+					let column = columns[j];
+					let field = item[column.id];
+					if (j != columns.length - 1) {
+						key += '' + field + this.groupDelimeterChar;
 					}
-					if (equal) {
-						if (!result[values]) {
-							result[values] = [];
-						}
-						if (result[values].indexOf(data[k]) == -1) {
-							result[values].push(data[k]);
-						}
+					else {
+						key += '' + field;
 					}
 				}
+				if (!result[key]) {
+					result[key] = []
+				}
+				result[key].push(item);
 			}
 			return result;
+		},
+		hasGrouped() {
+			return this.groupingColumns && this.groupingColumns.length > 0;
 		}
-		/*currentColumns: function () {
-			let columns = this.columns;
-			let columnsCash = this.columnsCash;
-			if (this.columnsCash == null
-				|| columnsCash.some(x => columns.indexOf(x) < 0) 
-				|| columns.some(x => columnsCash.indexOf(x) < 0)) {
-				this.columnsCash = columns.map(x => x);
-				return this.columnsCash;
-			}
-			return columnsCash;
-		}*/
 	},
 	methods: {
-		getReadableName: function (name) {
+		getColumnsInfo() {
+			const defaultType = 'string';
+			return this.columns.map(x => {
+				switch (typeof(x)) {
+					case 'string':
+						return {
+							id: x,
+							name: this.getReadableName(x),
+							type: defaultType,
+							sortable: this.sortable || false,
+							filtrable: this.filtrable || false,
+							groupable: this.groupable || false
+						}
+					case 'object':
+						if (Array.isArray(x)){
+							return {
+								id: x[0],
+								name: x[1] || this.getReadableName(x[0]),
+								type: x[2] || defaultType,
+								sortable: this.sortable || false,
+								filtrable: this.filtrable || false,
+								groupable: this.groupable || false
+							}
+						}
+						else {
+							return {
+								id: x.id,
+								name: x.name || this.getReadableName(x.id),
+								type: x.type || defaultType,
+								sortable: x.sortable ||  this.sortable || false,
+								filtrable: x.filtrable ||  this.filtrable || false,
+								groupable: x.groupable || this.groupable || false
+							}
+						}
+				}
+			})
+		},
+
+		getReadableName(name) {
 			let result = name[0].toUpperCase();
 			for (let i = 1; i < name.length; i++) {
 				let c = name[i];
@@ -273,109 +327,149 @@ module.exports = g;
 			}
 			return result;
 		},
-		getPage: function () {
-			if (this.current.page.number > this.pageCount) {
-				this.current.page.number = 1;
+
+		getItemsOnCurrentPage() {
+			if (this.page.number > this.pageCount) {
+				this.page.number = 1;
 			}
-			if (+this.current.page.size == 0) {
+			if (+this.page.size == 0) {
 				return this.data;
 			}
-			let from = this.current.page.size * (this.current.page.number - 1);
-			let to = this.current.page.size * this.current.page.number;
+			let from = this.page.size * (this.page.number - 1);
+			let to = this.page.size * this.page.number;
 			return this.data.slice(from, to);
 		},
-		getGroupedPage: function () {
-			if (this.current.page.number > this.pageCount) {
-				this.current.page.number = 1;
+
+		getGroupedItemsOnCurrentPage() {
+			if (this.page.number > this.pageCount) {
+				this.page.number = 1;
 			}
-			if ((this.current.page.size + "").toLowerCase() === 'all') {
-				return this.group;
-			}
-			if (+this.current.page.size === 0) {
-				return {};
+			if (+this.page.size == 0) {
+				return this.groupedData;
 			}
 			let result = {};
 			let num = 0;
-			let size = (this.current.page.size + "").toLowerCase() === 'all' ? 1000000 : this.current.page.size;
-			let from = size * (this.current.page.number - 1);
-			let to = size * this.current.page.number;
-			for (let key in this.group) {
-				for (let i in this.group[key]) {
+			let from = this.page.size * (this.page.number - 1);
+			let to = this.page.size * this.page.number;
+			for (let key in this.groupedData) {
+				for (let i in this.groupedData[key]) {
 					if (from <= num && num < to) {
 						if (!result[key]) {
 							result[key] = []
 						}
-						result[key].push(this.group[key][i]);
+						result[key].push(this.groupedData[key][i]);
 					}
 					num++;
 				}
 			}
 			return result;
 		},
-		nextPage: function () {
-			if (this.current.page.number < this.pageCount) {
-				this.current.page.number++;
+
+		nextPage() {
+			if (this.page.number < this.pageCount) {
+				this.page.number++;
 			}
 		},
-		prevPage: function () {
-			if (this.current.page.number > 1) {
-				this.current.page.number--;
+
+		prevPage() {
+			if (this.page.number > 1) {
+				this.page.number--;
 			}
 		},
-		lastPage: function () {
-			this.current.page.number = this.pageCount;
+
+		lastPage() {
+			this.page.number = this.pageCount;
 		},
-		firstPage: function () {
-			this.current.page.number = 1;
+
+		firstPage() {
+			this.page.number = 1;
 		},
-		columnDragStart: function (column) {
-			this.current.movableColumn.dragable = column;
+
+		columnDragStart(column) {
+			this.movableColumn.dragable = column;
 		},
-		columnDragEnter: function (column) {
-			this.current.movableColumn.dropable = column;
+
+		columnDragEnter(column) {
+			this.movableColumn.dropable = column;
 		},
-		columnDragEnd: function () {
-			let dragable = this.current.movableColumn.dragable;
-			let dropable = this.current.movableColumn.dropable;
-			if (!dragable || !dropable) {
+
+		columnDragEnd() {
+			let dragableColumn = this.movableColumn.dragable;
+			let dropableColumn = this.movableColumn.dropable;
+			if (!dragableColumn || !dropableColumn) {
 				return;
 			}
-			if (dragable != dropable) {
-				if (dropable == this.groupAreaName) {
-					this.current.grouping.push(dragable);
+			if (dragableColumn != dropableColumn) {
+				if (dropableColumn == this.groupAreaName) {
+					this.groupingColumns.push(dragableColumn);
+					this.sorting.column = null;
+					this.sorting.ascending = false;
 				}
 				else {
-					let indexOfDragable = this.currentColumns.indexOf(dragable);
-					let indexOfDropable = this.currentColumns.indexOf(dropable);
-					if (indexOfDropable > 0) {
-						this.currentColumns.splice(indexOfDragable, 1);
-						if (indexOfDragable < indexOfDropable) {
-							this.currentColumns.splice(indexOfDropable, 0, dragable);
-						}
-						else {
-							this.currentColumns.splice(indexOfDropable, 0, dragable);
-						}
+					let indexOfDragable = this.columnsInfo.indexOf(dragableColumn);
+					let indexOfDropable = this.columnsInfo.indexOf(dropableColumn);
+					if (indexOfDropable > -1) {
+						this.columnsInfo.splice(indexOfDragable, 1);
+						this.columnsInfo.splice(indexOfDropable, 0, dragableColumn);
 					}
 				}
 			}
-			this.current.movableColumn.dragable = '';
-			this.current.movableColumn.dropable = '';
+			this.movableColumn.dragable = null;
+			this.movableColumn.dropable = null;
 			this.$forceUpdate();
 		},
-		sort: function (column) {
-			let direction = this.current.sorting.name == column 
-				? (this.current.sorting.ascending ? -1 : 1)
+		
+		sort(column, group) {
+			let direction = this.sorting.column == column 
+				? (this.sorting.ascending ? -1 : 1)
 				: 1;
-			this.data.sort((x, y) => 
-				x[column] > y[column] 
-				? direction 
-				: x[column] < y[column] 
-					? -direction 
-					: 0);
-			this.current.sorting.name = column;
-			this.current.sorting.ascending = direction == 1 
+			let getTypedValue = this.getTypedValue;
+			let sortFunction = (x, y) => 
+				getTypedValue(x[column.id], column.type) > getTypedValue(y[column.id], column.type)
+					? direction 
+					: getTypedValue(x[column.id], column.type) < getTypedValue(y[column.id], column.type)
+						? -direction 
+						: 0;
+			if (!group) {
+				this.data.sort(sortFunction);
+			}
+			else {
+				for (let i in this.groupedData) {
+					this.groupedData[i].sort(sortFunction);
+				}
+			}
+			this.sorting.column = column;
+			this.sorting.ascending = direction == 1 
 				? true 
 				: false;
+		},
+
+		ungroup(column) {
+			let i = this.groupingColumns.indexOf(column);
+			this.groupingColumns.splice(i, 1);
+			this.sorting.column = null;
+			this.sorting.ascending = false;
+		},
+
+		getTypedValue(value, type) {
+			switch (type) {
+				case 'date':
+					/* TODO: use moment.js */
+					return Date.parse(value);
+				case 'string':
+					return value;
+				case 'number':
+					return +value;
+			}
+		},
+
+		getCells(data, key) {
+			let result = [];
+			for (let i in data) {
+				let item = data[i];
+				result.push(item[key]);
+			}
+			return result;
 		}
 	}
 });
@@ -450,7 +544,7 @@ var app = new Vue({
         data: [
             {
                 mid: 20001,
-                date: '12-04-2018',
+                date: '2018-01-23',
                 purchaseId: 1000017923,
                 transactionId: 1234435467,
                 status: 'auth',
@@ -460,7 +554,7 @@ var app = new Vue({
             },
             {
                 mid: 2002,
-                date: '08-01-2018',
+                date: '2018-01-23',
                 purchaseId: 23534345,
                 transactionId: 436534532,
                 status: 'not auth',
@@ -470,7 +564,7 @@ var app = new Vue({
             },
             {
                 mid: 12234,
-                date: '06-11-2018',
+                date: '2018-01-23',
                 purchaseId: 3453,
                 transactionId: 436455,
                 status: 'auth',
@@ -478,26 +572,73 @@ var app = new Vue({
                 amount: 7.56,
                 url: 'test.com'
             },
+        ],
+        columns: [
+            { id: 'mid', name: 'Merchant Id' },
+            { id: 'date', type: 'date' },
+            { id: 'purchaseId', type: 'number' },
+            { id: 'transactionId', type: 'number' },
+            'status',
+            'currency',
+            ['amount', 'Value', 'number'],
+            'url'
         ]
     },
     created: function() {
-        this.addRandomData(2500); // cols.reduce((a, b) => a + b, 0)
+        this.addRandomData(500); // cols.reduce((a, b) => a + b, 0)
     },
     methods: {
         addRandomData: function (count) {
             for (let i = 0; i < count; i++) {
                 this.data.push({
-                    mid: i * i,
-                    date: '0' + (i + 1) + '-11-2018',
-                    purchaseId: Math.sin(i),
-                    transactionId: Math.cos(i),
-                    status: 'dgfdhdfhfdhfdhgf',
-                    currency: 'EUR',
-                    amount: i / (Math.sin(i) + 1),
-                    url: 'test.com'
+                    mid: this.getRandomInt(20000, 25000),
+                    date: this.randomDate(new Date(2000, 1, 1, 1, 1, 1), new Date(2018, 1, 1, 1, 1, 1)),
+                    purchaseId: this.getRandomInt(23452, 342355),
+                    transactionId: this.getRandomInt(23452, 3243242343),
+                    status: this.randomSecuence(),
+                    currency: this.randomCurrency(),
+                    amount: this.getRandomArbitrary(-50, 50),
+                    url: this.randomUrl()
                 });
             }
-        }
+        },
+        randomDate(start, end) {
+            var d = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime())),
+                month = '' + (d.getMonth() + 1),
+                day = '' + d.getDate(),
+                year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        },
+
+        getRandomArbitrary(min, max) {
+            return Math.random() * (max - min) + min;
+        },
+
+        getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        },
+
+        randomSecuence() {
+            var things = ['rock', 'paper', 'scissor', 'test', 'what', 'best', 'wrost', 'things'];
+            var t = this.getRandomInt(3, things.length);
+            let result = "";
+            for (let i = 0; i < t; i++) {
+                result += things[Math.floor(Math.random() * things.length)] + " ";
+            }
+            return result;
+        },
+
+        randomCurrency() {
+            var things = ['USD', 'EUR', 'BTC', 'COIN', 'DOGE', 'ETH'];
+            return things[Math.floor(Math.random() * things.length)];
+        },
+
+        randomUrl() {
+            var things = ['my-little-pony', 'dot', 'test', 'best-way', 'PAY'];
+            return things[Math.floor(Math.random() * things.length)] + '.com';
+        },
     }
 })
 /* WEBPACK VAR INJECTION */}.call(__webpack_exports__, __webpack_require__(5)))
@@ -1040,129 +1181,261 @@ var render = function() {
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
   return _c("div", { staticClass: "report-table" }, [
-    _c("div", {
-      staticClass: "col-sm-12 group-area",
-      on: {
-        dragenter: function($event) {
-          _vm.columnDragEnter(_vm.groupAreaName)
-        },
-        dragend: function($event) {
-          _vm.columnDragEnd()
+    _c(
+      "div",
+      {
+        staticClass: "col-sm-12 group-area",
+        on: {
+          dragenter: function($event) {
+            _vm.columnDragEnter(_vm.groupAreaName)
+          },
+          dragend: function($event) {
+            _vm.columnDragEnd()
+          }
         }
-      }
-    }),
+      },
+      _vm._l(_vm.groupingColumns, function(groupingColumn) {
+        return _c("div", [
+          _vm._v("\n\t\t\t" + _vm._s(groupingColumn.name) + "\n\t\t\t"),
+          _c(
+            "button",
+            {
+              on: {
+                click: function($event) {
+                  _vm.ungroup(groupingColumn)
+                }
+              }
+            },
+            [_vm._v("X")]
+          ),
+          _vm._v(" "),
+          _c(
+            "button",
+            {
+              on: {
+                click: function($event) {
+                  _vm.sort(groupingColumn)
+                }
+              }
+            },
+            [_vm._v("sort")]
+          )
+        ])
+      })
+    ),
     _vm._v(" "),
     _c("table", { staticClass: "table" }, [
       _c("tfoot", [
         _c(
           "tr",
-          _vm._l(_vm.currentColumns, function(column) {
-            return _c(
-              "th",
-              [_vm._t(column + "-footer", null, { cols: _vm.cols[column] })],
-              2
-            )
-          })
+          [
+            _vm._l(_vm.groupingColumns, function(i) {
+              return _c("th")
+            }),
+            _vm._v(" "),
+            _vm._l(_vm.columnsInfo, function(column) {
+              return _c(
+                "th",
+                [
+                  _vm._t(column.id + "-footer", null, {
+                    cols: _vm.getCells(_vm.data, column.id)
+                  })
+                ],
+                2
+              )
+            })
+          ],
+          2
         )
       ]),
       _vm._v(" "),
       _c("thead", [
         _c(
           "tr",
-          _vm._l(_vm.currentColumns, function(column) {
-            return _c(
-              "th",
-              {
-                attrs: { draggable: "true" },
-                on: {
-                  dragstart: function($event) {
-                    _vm.columnDragStart(column)
-                  },
-                  dragenter: function($event) {
-                    _vm.columnDragEnter(column)
-                  },
-                  dragend: function($event) {
-                    _vm.columnDragEnd()
-                  },
-                  click: function($event) {
-                    _vm.sort(column)
-                  }
-                }
-              },
-              [
-                _vm._t(
-                  column + "-header",
-                  [
-                    _vm._v(
-                      "\n\t\t\t\t\t\t" +
-                        _vm._s(_vm.getReadableName(column)) +
-                        "\n\t\t\t\t\t"
-                    )
-                  ],
-                  { cols: _vm.cols[column] }
-                ),
-                _vm._v(" "),
-                _c(
-                  "span",
-                  {
-                    directives: [
-                      {
-                        name: "show",
-                        rawName: "v-show",
-                        value: _vm.current.sorting.name === column,
-                        expression: "current.sorting.name === column"
-                      }
-                    ]
-                  },
-                  [
-                    _vm._v(
-                      "\n\t\t\t\t\t\t" +
-                        _vm._s(_vm.current.sorting.ascending ? "asc" : "desc") +
-                        "\n\t\t\t\t\t"
-                    )
-                  ]
-                )
-              ],
-              2
-            )
-          })
-        )
-      ]),
-      _vm._v(" "),
-      _c(
-        "tbody",
-        _vm._l(_vm.getPage(), function(item) {
-          return _c(
-            "tr",
-            {
-              directives: [
-                {
-                  name: "show",
-                  rawName: "v-show",
-                  value: !_vm.current.grouping.length,
-                  expression: "!current.grouping.length"
-                }
-              ]
-            },
-            _vm._l(_vm.currentColumns, function(column) {
+          [
+            _vm._l(_vm.groupingColumns, function(i) {
+              return _c("th")
+            }),
+            _vm._v(" "),
+            _vm._l(_vm.columnsInfo, function(column) {
               return _c(
-                "td",
+                "th",
+                {
+                  attrs: { draggable: "true" },
+                  on: {
+                    dragstart: function($event) {
+                      _vm.columnDragStart(column)
+                    },
+                    dragenter: function($event) {
+                      _vm.columnDragEnter(column)
+                    },
+                    dragend: function($event) {
+                      _vm.columnDragEnd()
+                    },
+                    click: function($event) {
+                      _vm.sort(column, _vm.hasGrouped)
+                    }
+                  }
+                },
                 [
                   _vm._t(
-                    column + "-column",
+                    column.id + "-header",
                     [
                       _vm._v(
-                        "\n\t\t\t\t\t\t" + _vm._s(item[column]) + "\n\t\t\t\t\t"
+                        "\n\t\t\t\t\t\t" + _vm._s(column.name) + "\n\t\t\t\t\t"
                       )
                     ],
-                    { value: item[column] }
+                    { cols: _vm.getCells(_vm.data, column.id) }
+                  ),
+                  _vm._v(" "),
+                  _c(
+                    "span",
+                    {
+                      directives: [
+                        {
+                          name: "show",
+                          rawName: "v-show",
+                          value: _vm.sorting.column === column,
+                          expression: "sorting.column === column"
+                        }
+                      ]
+                    },
+                    [
+                      _vm._v(
+                        "\n\t\t\t\t\t\t" +
+                          _vm._s(_vm.sorting.ascending ? "asc" : "desc") +
+                          "\n\t\t\t\t\t"
+                      )
+                    ]
                   )
                 ],
                 2
               )
             })
-          )
-        })
+          ],
+          2
+        )
+      ]),
+      _vm._v(" "),
+      _c(
+        "tbody",
+        [
+          _vm._l(_vm.getItemsOnCurrentPage(), function(item) {
+            return !_vm.hasGrouped
+              ? _c(
+                  "tr",
+                  _vm._l(_vm.columnsInfo, function(column) {
+                    return _c(
+                      "td",
+                      [
+                        _vm._t(
+                          column.id + "-column",
+                          [
+                            _vm._v(
+                              "\n\t\t\t\t\t\t" +
+                                _vm._s(item[column.id]) +
+                                "\n\t\t\t\t\t"
+                            )
+                          ],
+                          { value: item[column.id] }
+                        )
+                      ],
+                      2
+                    )
+                  })
+                )
+              : _vm._e()
+          }),
+          _vm._v(" "),
+          _vm._l(_vm.getGroupedItemsOnCurrentPage(), function(items, key) {
+            return _vm.hasGrouped
+              ? [
+                  _vm._l(key.split(_vm.groupDelimeterChar), function(
+                    groupValue,
+                    i
+                  ) {
+                    return _c(
+                      "tr",
+                      [
+                        _vm._l(new Array(i + 1), function(trash) {
+                          return _c("th")
+                        }),
+                        _vm._v(" "),
+                        _c(
+                          "th",
+                          {
+                            attrs: {
+                              colspan:
+                                _vm.groupingColumns.length +
+                                _vm.columnsInfo.length -
+                                i -
+                                1
+                            }
+                          },
+                          [
+                            _vm._t(
+                              _vm.groupingColumns[i].id + "-group",
+                              [
+                                _vm._v(
+                                  "\n\t\t\t\t\t\t\t" +
+                                    _vm._s(_vm.groupingColumns[i].name) +
+                                    ": " +
+                                    _vm._s(groupValue) +
+                                    "\n\t\t\t\t\t\t"
+                                )
+                              ],
+                              {
+                                cells: _vm.getCells(
+                                  items,
+                                  _vm.groupingColumns[i].id
+                                ),
+                                value: groupValue
+                              }
+                            )
+                          ],
+                          2
+                        )
+                      ],
+                      2
+                    )
+                  }),
+                  _vm._v(" "),
+                  _vm._l(items, function(item) {
+                    return _c(
+                      "tr",
+                      [
+                        _vm._l(_vm.groupingColumns, function(i) {
+                          return _c("th")
+                        }),
+                        _vm._v(" "),
+                        _vm._l(_vm.columnsInfo, function(column) {
+                          return _c(
+                            "td",
+                            [
+                              _vm._t(
+                                column.id + "-column",
+                                [
+                                  _vm._v(
+                                    "\n\t\t\t\t\t\t\t" +
+                                      _vm._s(item[column.id]) +
+                                      "\n\t\t\t\t\t\t"
+                                  )
+                                ],
+                                { value: item[column.id] }
+                              )
+                            ],
+                            2
+                          )
+                        })
+                      ],
+                      2
+                    )
+                  })
+                ]
+              : _vm._e()
+          })
+        ],
+        2
       )
     ]),
     _vm._v(" "),
@@ -1198,9 +1471,7 @@ var render = function() {
           return [
             _vm._v(
               "\n\t\t\t" +
-                _vm._s(
-                  i + 1 == _vm.current.page.number ? ">" + (i + 1) + "<" : i + 1
-                ) +
+                _vm._s(i + 1 == _vm.page.number ? ">" + (i + 1) + "<" : i + 1) +
                 "\n\t\t"
             )
           ]
@@ -1237,8 +1508,8 @@ var render = function() {
               {
                 name: "model",
                 rawName: "v-model",
-                value: _vm.current.page.size,
-                expression: "current.page.size"
+                value: _vm.page.size,
+                expression: "page.size"
               }
             ],
             on: {
@@ -1252,7 +1523,7 @@ var render = function() {
                     return val
                   })
                 _vm.$set(
-                  _vm.current.page,
+                  _vm.page,
                   "size",
                   $event.target.multiple ? $$selectedVal : $$selectedVal[0]
                 )

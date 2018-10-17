@@ -3,57 +3,85 @@
 		<div class='col-sm-12 group-area'
 			 @dragenter="columnDragEnter(groupAreaName)"
 			 @dragend="columnDragEnd()">
+			 <div v-for="groupingColumn in groupingColumns">
+				{{groupingColumn.name}}
+				<button @click="ungroup(groupingColumn)">X</button>
+				<button @click="sort(groupingColumn)">sort</button>
+			 </div>
 		</div>
 		<table class="table">
 			<tfoot>
 				<tr>
-					<th v-for="column in currentColumns">
-						<slot :name="column + '-footer'"
-							  :cols="cols[column]">
+					<th v-for="i in groupingColumns"></th>
+					<th v-for="column in columnsInfo">
+						<slot :name="column.id + '-footer'"
+							  :cols="getCells(data, column.id)">
 						</slot>
 					</th>
 				</tr>
 			</tfoot>
 			<thead>
 				<tr>
-					<th  v-for="column in currentColumns" 
+					<th v-for="i in groupingColumns"></th>
+					<th  v-for="column in columnsInfo" 
 						 draggable="true"
 						 @dragstart="columnDragStart(column)"
 						 @dragenter="columnDragEnter(column)"
 						 @dragend="columnDragEnd()"
-						 @click="sort(column)">
-						<slot :name="column + '-header'"
-							  :cols="cols[column]">
-							{{getReadableName(column)}}
+						 @click="sort(column, hasGrouped)">
+						<slot :name="column.id + '-header'"
+							  :cols="getCells(data, column.id)">
+							{{column.name}}
 						</slot>
-						<span v-show="current.sorting.name === column">
-							{{current.sorting.ascending ? 'asc' : 'desc'}}
+						<span v-show="sorting.column === column">
+							{{sorting.ascending ? 'asc' : 'desc'}}
 						</span>
 					</th>
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-show="!current.grouping.length" 
-					v-for="item in getPage()">
-					<td v-for="column in currentColumns">
-						<slot :name="column + '-column'" 
-							  :value="item[column]">
-							{{item[column]}}
+				<tr v-if="!hasGrouped" 
+					v-for="item in getItemsOnCurrentPage()">
+					<td v-for="column in columnsInfo">
+						<slot :name="column.id + '-column'" 
+							  :value="item[column.id]">
+							{{item[column.id]}}
 						</slot>
 					</td>
 				</tr>
-
+				<template v-if="hasGrouped" 
+						  v-for="(items, key) in getGroupedItemsOnCurrentPage()">
+					<tr v-for="(groupValue, i) in key.split(groupDelimeterChar)">
+						<th v-for="trash in new Array(i + 1)"></th>
+						<th :colspan="groupingColumns.length + columnsInfo.length - i - 1">
+							<slot :name="groupingColumns[i].id + '-group'" 
+								:cells="getCells(items, groupingColumns[i].id)"
+								:value="groupValue">
+								{{groupingColumns[i].name}}: {{groupValue}}
+							</slot>
+						</th>
+					</tr>
+					<tr v-for="item in items">
+						<th v-for="i in groupingColumns"></th>
+						<td v-for="column in columnsInfo">
+							<slot :name="column.id + '-column'" 
+								:value="item[column.id]">
+								{{item[column.id]}}
+							</slot>
+						</td>
+					</tr>
+				</template>
 			</tbody>
 		</table>
 		<div class=col-sm-12>
 			<button @click="firstPage()">--</button>
 			<button @click="prevPage()">-</button>
 			<template v-for="(item, i) in new Array(pageCount)">
-				{{i + 1 == current.page.number ? ('>' + (i + 1) + '<') : (i + 1)}}
+				{{i + 1 == page.number ? ('>' + (i + 1) + '<') : (i + 1)}}
 			</template>
 			<button @click="nextPage()">></button>
 			<button @click="lastPage()">>></button>
-			<select v-model="current.page.size">
+			<select v-model="page.size">
 				<option v-for="size in pageSizes" :value="size">{{size == 0 ? 'all' : size}}</option>
 			</select>
 		</div>
@@ -72,88 +100,114 @@
 				default: [25, 50, 100, 0]
 			}
 		},
-		data: function () {
+		data() {
 			return {
-				current: {
-					sorting: {
-						name: '',
-						ascending: false
-					},
-					filter: {
-						name: '',
-						mode: 'eq'
-					},
-					grouping: [],
-					page: {
-						size: this.pageSizes[0],
-						number: 1
-					},
-					movableColumn: {
-						dragable: '',
-						dropable: ''
-					}
+				sorting: {
+					column: null,
+					ascending: false
 				},
-				currentColumns: this.columns.map(x => x),
-				groupAreaName: '*group-area*'
+				filteringColumn: {
+					id: '',
+					mode: 'eq'
+				},
+				groupingColumns: [],
+				page: {
+					size: this.pageSizes[0],
+					number: 1
+				},
+				movableColumn: {
+					dragable: null,
+					dropable: null
+				},
+				columnsInfo: this.getColumnsInfo(),
+				groupAreaName: '*group-area*',
+				groupDelimeterChar: ';' /* &#8006; */
 				/*columnsCash: null*/
 			}
 		},
 		computed: {
-			cols: function () {
+			cols() {
 				let result = {};
-				for (let i in this.currentColumns) {
-					let column = this.currentColumns[i];
-					result[column] = this.data.map(x => x[column]);
+				for (let i in this.columnsInfo) {
+					let column = this.columnsInfo[i];
+					result[column.id] = this.data.map(x => x[column.id]);
 				}
 				return result;
 			},
-			pageCount: function () {
-				if (this.current.page.size == 0) {
+			pageCount() {
+				if (this.page.size == 0) {
 					return 1;
 				}
-				return Math.ceil(this.data.length / this.current.page.size);
+				return Math.ceil(this.data.length / this.page.size);
 			},
-			group: function () {
+			groupedData() {
 				let data = this.data;
-				let columns = this.current.grouping;
-				let result = [];
-				for (let j = 0; j < data.length; j++) {
-					for (let k = j; k < data.length; k++) {
-						let equal = true;
-						let values = [];
-						for (let i = 0; i < columns.length; i++) {
-							if (data[j][columns[i]] != data[k][columns[i]]) {
-								equal = false;
-								break;
-							}
-							values.push(data[k][columns[i]]);
+				let columns = this.groupingColumns;
+				let result = {};
+				for (let i = 0; i < data.length; i++) {
+					let item = data[i];
+					let key = "";
+					for (let j = 0; j < columns.length; j++) {
+						let column = columns[j];
+						let field = item[column.id];
+						if (j != columns.length - 1) {
+							key += '' + field + this.groupDelimeterChar;
 						}
-						if (equal) {
-							if (!result[values]) {
-								result[values] = [];
-							}
-							if (result[values].indexOf(data[k]) == -1) {
-								result[values].push(data[k]);
-							}
+						else {
+							key += '' + field;
 						}
 					}
+					if (!result[key]) {
+						result[key] = []
+					}
+					result[key].push(item);
 				}
 				return result;
+			},
+			hasGrouped() {
+				return this.groupingColumns && this.groupingColumns.length > 0;
 			}
-			/*currentColumns: function () {
-				let columns = this.columns;
-				let columnsCash = this.columnsCash;
-				if (this.columnsCash == null
-					|| columnsCash.some(x => columns.indexOf(x) < 0) 
-					|| columns.some(x => columnsCash.indexOf(x) < 0)) {
-					this.columnsCash = columns.map(x => x);
-					return this.columnsCash;
-				}
-				return columnsCash;
-			}*/
 		},
 		methods: {
-			getReadableName: function (name) {
+			getColumnsInfo() {
+				const defaultType = 'string';
+				return this.columns.map(x => {
+					switch (typeof(x)) {
+						case 'string':
+							return {
+								id: x,
+								name: this.getReadableName(x),
+								type: defaultType,
+								sortable: this.sortable || false,
+								filtrable: this.filtrable || false,
+								groupable: this.groupable || false
+							}
+						case 'object':
+							if (Array.isArray(x)){
+								return {
+									id: x[0],
+									name: x[1] || this.getReadableName(x[0]),
+									type: x[2] || defaultType,
+									sortable: this.sortable || false,
+									filtrable: this.filtrable || false,
+									groupable: this.groupable || false
+								}
+							}
+							else {
+								return {
+									id: x.id,
+									name: x.name || this.getReadableName(x.id),
+									type: x.type || defaultType,
+									sortable: x.sortable ||  this.sortable || false,
+									filtrable: x.filtrable ||  this.filtrable || false,
+									groupable: x.groupable || this.groupable || false
+								}
+							}
+					}
+				})
+			},
+
+			getReadableName(name) {
 				let result = name[0].toUpperCase();
 				for (let i = 1; i < name.length; i++) {
 					let c = name[i];
@@ -167,109 +221,149 @@
 				}
 				return result;
 			},
-			getPage: function () {
-				if (this.current.page.number > this.pageCount) {
-					this.current.page.number = 1;
+
+			getItemsOnCurrentPage() {
+				if (this.page.number > this.pageCount) {
+					this.page.number = 1;
 				}
-				if (+this.current.page.size == 0) {
+				if (+this.page.size == 0) {
 					return this.data;
 				}
-				let from = this.current.page.size * (this.current.page.number - 1);
-				let to = this.current.page.size * this.current.page.number;
+				let from = this.page.size * (this.page.number - 1);
+				let to = this.page.size * this.page.number;
 				return this.data.slice(from, to);
 			},
-			getGroupedPage: function () {
-				if (this.current.page.number > this.pageCount) {
-					this.current.page.number = 1;
+
+			getGroupedItemsOnCurrentPage() {
+				if (this.page.number > this.pageCount) {
+					this.page.number = 1;
 				}
-				if ((this.current.page.size + "").toLowerCase() === 'all') {
-					return this.group;
-				}
-				if (+this.current.page.size === 0) {
-					return {};
+				if (+this.page.size == 0) {
+					return this.groupedData;
 				}
 				let result = {};
 				let num = 0;
-				let size = (this.current.page.size + "").toLowerCase() === 'all' ? 1000000 : this.current.page.size;
-				let from = size * (this.current.page.number - 1);
-				let to = size * this.current.page.number;
-				for (let key in this.group) {
-					for (let i in this.group[key]) {
+				let from = this.page.size * (this.page.number - 1);
+				let to = this.page.size * this.page.number;
+				for (let key in this.groupedData) {
+					for (let i in this.groupedData[key]) {
 						if (from <= num && num < to) {
 							if (!result[key]) {
 								result[key] = []
 							}
-							result[key].push(this.group[key][i]);
+							result[key].push(this.groupedData[key][i]);
 						}
 						num++;
 					}
 				}
 				return result;
 			},
-			nextPage: function () {
-				if (this.current.page.number < this.pageCount) {
-					this.current.page.number++;
+
+			nextPage() {
+				if (this.page.number < this.pageCount) {
+					this.page.number++;
 				}
 			},
-			prevPage: function () {
-				if (this.current.page.number > 1) {
-					this.current.page.number--;
+
+			prevPage() {
+				if (this.page.number > 1) {
+					this.page.number--;
 				}
 			},
-			lastPage: function () {
-				this.current.page.number = this.pageCount;
+
+			lastPage() {
+				this.page.number = this.pageCount;
 			},
-			firstPage: function () {
-				this.current.page.number = 1;
+
+			firstPage() {
+				this.page.number = 1;
 			},
-			columnDragStart: function (column) {
-				this.current.movableColumn.dragable = column;
+
+			columnDragStart(column) {
+				this.movableColumn.dragable = column;
 			},
-			columnDragEnter: function (column) {
-				this.current.movableColumn.dropable = column;
+
+			columnDragEnter(column) {
+				this.movableColumn.dropable = column;
 			},
-			columnDragEnd: function () {
-				let dragable = this.current.movableColumn.dragable;
-				let dropable = this.current.movableColumn.dropable;
-				if (!dragable || !dropable) {
+
+			columnDragEnd() {
+				let dragableColumn = this.movableColumn.dragable;
+				let dropableColumn = this.movableColumn.dropable;
+				if (!dragableColumn || !dropableColumn) {
 					return;
 				}
-				if (dragable != dropable) {
-					if (dropable == this.groupAreaName) {
-						this.current.grouping.push(dragable);
+				if (dragableColumn != dropableColumn) {
+					if (dropableColumn == this.groupAreaName) {
+						this.groupingColumns.push(dragableColumn);
+						this.sorting.column = null;
+						this.sorting.ascending = false;
 					}
 					else {
-						let indexOfDragable = this.currentColumns.indexOf(dragable);
-						let indexOfDropable = this.currentColumns.indexOf(dropable);
-						if (indexOfDropable > 0) {
-							this.currentColumns.splice(indexOfDragable, 1);
-							if (indexOfDragable < indexOfDropable) {
-								this.currentColumns.splice(indexOfDropable, 0, dragable);
-							}
-							else {
-								this.currentColumns.splice(indexOfDropable, 0, dragable);
-							}
+						let indexOfDragable = this.columnsInfo.indexOf(dragableColumn);
+						let indexOfDropable = this.columnsInfo.indexOf(dropableColumn);
+						if (indexOfDropable > -1) {
+							this.columnsInfo.splice(indexOfDragable, 1);
+							this.columnsInfo.splice(indexOfDropable, 0, dragableColumn);
 						}
 					}
 				}
-				this.current.movableColumn.dragable = '';
-				this.current.movableColumn.dropable = '';
+				this.movableColumn.dragable = null;
+				this.movableColumn.dropable = null;
 				this.$forceUpdate();
 			},
-			sort: function (column) {
-				let direction = this.current.sorting.name == column 
-					? (this.current.sorting.ascending ? -1 : 1)
+			
+			sort(column, group) {
+				let direction = this.sorting.column == column 
+					? (this.sorting.ascending ? -1 : 1)
 					: 1;
-				this.data.sort((x, y) => 
-					x[column] > y[column] 
-					? direction 
-					: x[column] < y[column] 
-						? -direction 
-						: 0);
-				this.current.sorting.name = column;
-				this.current.sorting.ascending = direction == 1 
+				let getTypedValue = this.getTypedValue;
+				let sortFunction = (x, y) => 
+					getTypedValue(x[column.id], column.type) > getTypedValue(y[column.id], column.type)
+						? direction 
+						: getTypedValue(x[column.id], column.type) < getTypedValue(y[column.id], column.type)
+							? -direction 
+							: 0;
+				if (!group) {
+					this.data.sort(sortFunction);
+				}
+				else {
+					for (let i in this.groupedData) {
+						this.groupedData[i].sort(sortFunction);
+					}
+				}
+				this.sorting.column = column;
+				this.sorting.ascending = direction == 1 
 					? true 
 					: false;
+			},
+
+			ungroup(column) {
+				let i = this.groupingColumns.indexOf(column);
+				this.groupingColumns.splice(i, 1);
+				this.sorting.column = null;
+				this.sorting.ascending = false;
+			},
+
+			getTypedValue(value, type) {
+				switch (type) {
+					case 'date':
+						/* TODO: use moment.js */
+						return Date.parse(value);
+					case 'string':
+						return value;
+					case 'number':
+						return +value;
+				}
+			},
+
+			getCells(data, key) {
+				let result = [];
+				for (let i in data) {
+					let item = data[i];
+					result.push(item[key]);
+				}
+				return result;
 			}
 		}
 	}
