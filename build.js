@@ -232,14 +232,6 @@ module.exports = g;
 		}
 	},
 	computed: {
-		cols() {
-			let result = {};
-			for (let i in this.columnsInfo) {
-				let column = this.columnsInfo[i];
-				result[column.id] = this.data.map(x => x[column.id]);
-			}
-			return result;
-		},
 		pageCount() {
 			if (this.page.size == 0) {
 				return 1;
@@ -401,17 +393,10 @@ module.exports = g;
 			}
 			if (dragableColumn != dropableColumn) {
 				if (dropableColumn == this.groupAreaName) {
-					this.groupingColumns.push(dragableColumn);
-					this.sorting.column = null;
-					this.sorting.ascending = false;
+					this.group(dragableColumn);
 				}
 				else {
-					let indexOfDragable = this.columnsInfo.indexOf(dragableColumn);
-					let indexOfDropable = this.columnsInfo.indexOf(dropableColumn);
-					if (indexOfDropable > -1) {
-						this.columnsInfo.splice(indexOfDragable, 1);
-						this.columnsInfo.splice(indexOfDropable, 0, dragableColumn);
-					}
+					this.moveColumn(dragableColumn, dropableColumn);
 				}
 			}
 			this.movableColumn.dragable = null;
@@ -444,11 +429,26 @@ module.exports = g;
 				: false;
 		},
 
+		group(column) {
+			this.groupingColumns.push(column);
+			this.sorting.column = null;
+			this.sorting.ascending = false;
+		},
+
 		ungroup(column) {
 			let i = this.groupingColumns.indexOf(column);
 			this.groupingColumns.splice(i, 1);
 			this.sorting.column = null;
 			this.sorting.ascending = false;
+		},
+
+		moveColumn(from, to) {
+			let indexOfDragable = this.columnsInfo.indexOf(from);
+			let indexOfDropable = this.columnsInfo.indexOf(to);
+			if (indexOfDropable > -1) {
+				this.columnsInfo.splice(indexOfDragable, 1);
+				this.columnsInfo.splice(indexOfDropable, 0, from);
+			}
 		},
 
 		getTypedValue(value, type) {
@@ -1238,7 +1238,7 @@ var render = function() {
                 "th",
                 [
                   _vm._t(column.id + "-footer", null, {
-                    cols: _vm.getCells(_vm.data, column.id)
+                    cells: _vm.getCells(_vm.data, column.id)
                   })
                 ],
                 2
@@ -1285,7 +1285,7 @@ var render = function() {
                         "\n\t\t\t\t\t\t" + _vm._s(column.name) + "\n\t\t\t\t\t"
                       )
                     ],
-                    { cols: _vm.getCells(_vm.data, column.id) }
+                    { cells: _vm.getCells(_vm.data, column.id) }
                   ),
                   _vm._v(" "),
                   _c(

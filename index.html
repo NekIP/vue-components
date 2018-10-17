@@ -41,11 +41,11 @@
 				:sortable="true"
 				:groupable="true">
 
-				<template slot="mid-header" slot-scope="{ cols }">
+				<template slot="mid-header" slot-scope="{ cells }">
 					Merchant Id
-					{{Agregator.min(cols)}}<br />
-					{{Agregator.max(cols)}}<br />
-					{{Agregator.summ(cols)}}<br />
+					{{Agregator.min(cells)}}<br />
+					{{Agregator.max(cells)}}<br />
+					{{Agregator.summ(cells)}}<br />
 				</template>
 
 				<span slot="date-header">fdhfghfgh</span>
@@ -58,8 +58,12 @@
 						{{value}}
 					</span>
 				</template>
-				<template slot="amount-footer" slot-scope="{ cols }">
-					Total: {{Agregator.summ(cols)}}
+				<template slot="amount-footer" slot-scope="{ cells }">
+					Total: {{Agregator.summ(cells)}}
+				</template>
+
+				<template slot="currency-group" slot-scope="{ value, cells }">
+					Cur: {{value}} / {{cells.length}}
 				</template>
 			</vue-table>
 		</div>

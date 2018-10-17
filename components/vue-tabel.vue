@@ -15,7 +15,7 @@
 					<th v-for="i in groupingColumns"></th>
 					<th v-for="column in columnsInfo">
 						<slot :name="column.id + '-footer'"
-							  :cols="getCells(data, column.id)">
+							  :cells="getCells(data, column.id)">
 						</slot>
 					</th>
 				</tr>
@@ -30,7 +30,7 @@
 						 @dragend="columnDragEnd()"
 						 @click="sort(column, hasGrouped)">
 						<slot :name="column.id + '-header'"
-							  :cols="getCells(data, column.id)">
+							  :cells="getCells(data, column.id)">
 							{{column.name}}
 						</slot>
 						<span v-show="sorting.column === column">
@@ -126,14 +126,6 @@
 			}
 		},
 		computed: {
-			cols() {
-				let result = {};
-				for (let i in this.columnsInfo) {
-					let column = this.columnsInfo[i];
-					result[column.id] = this.data.map(x => x[column.id]);
-				}
-				return result;
-			},
 			pageCount() {
 				if (this.page.size == 0) {
 					return 1;
@@ -295,17 +287,10 @@
 				}
 				if (dragableColumn != dropableColumn) {
 					if (dropableColumn == this.groupAreaName) {
-						this.groupingColumns.push(dragableColumn);
-						this.sorting.column = null;
-						this.sorting.ascending = false;
+						this.group(dragableColumn);
 					}
 					else {
-						let indexOfDragable = this.columnsInfo.indexOf(dragableColumn);
-						let indexOfDropable = this.columnsInfo.indexOf(dropableColumn);
-						if (indexOfDropable > -1) {
-							this.columnsInfo.splice(indexOfDragable, 1);
-							this.columnsInfo.splice(indexOfDropable, 0, dragableColumn);
-						}
+						this.moveColumn(dragableColumn, dropableColumn);
 					}
 				}
 				this.movableColumn.dragable = null;
@@ -338,11 +323,26 @@
 					: false;
 			},
 
+			group(column) {
+				this.groupingColumns.push(column);
+				this.sorting.column = null;
+				this.sorting.ascending = false;
+			},
+
 			ungroup(column) {
 				let i = this.groupingColumns.indexOf(column);
 				this.groupingColumns.splice(i, 1);
 				this.sorting.column = null;
 				this.sorting.ascending = false;
+			},
+
+			moveColumn(from, to) {
+				let indexOfDragable = this.columnsInfo.indexOf(from);
+				let indexOfDropable = this.columnsInfo.indexOf(to);
+				if (indexOfDropable > -1) {
+					this.columnsInfo.splice(indexOfDragable, 1);
+					this.columnsInfo.splice(indexOfDropable, 0, from);
+				}
 			},
 
 			getTypedValue(value, type) {
