@@ -175,7 +175,7 @@ module.exports = g;
 		sortable: {},
 		groupable: {},
 		pageSizes: {
-			default: [2, 50, 100, 'all']
+			default: [25, 50, 100, 0]
 		}
 	},
 	data: function () {
@@ -214,7 +214,7 @@ module.exports = g;
 			return result;
 		},
 		pageCount: function () {
-			if ((this.current.page.size + "").toLowerCase() === 'all') {
+			if (this.current.page.size == 0) {
 				return 1;
 			}
 			return Math.ceil(this.data.length / this.current.page.size);
@@ -277,16 +277,12 @@ module.exports = g;
 			if (this.current.page.number > this.pageCount) {
 				this.current.page.number = 1;
 			}
-			if ((this.current.page.size + "").toLowerCase() === 'all') {
+			if (+this.current.page.size == 0) {
 				return this.data;
 			}
-			if (+this.current.page.size === 0) {
-				return [];
-			}
-			// splice
-			return this.data.filter((item, i) => 
-				i >= this.current.page.size * (this.current.page.number - 1)
-				&& i < this.current.page.size * this.current.page.number);
+			let from = this.current.page.size * (this.current.page.number - 1);
+			let to = this.current.page.size * this.current.page.number;
+			return this.data.slice(from, to);
 		},
 		getGroupedPage: function () {
 			if (this.current.page.number > this.pageCount) {
@@ -485,7 +481,7 @@ var app = new Vue({
         ]
     },
     created: function() {
-        this.addRandomData(15000); // cols.reduce((a, b) => a + b, 0)
+        this.addRandomData(2500); // cols.reduce((a, b) => a + b, 0)
     },
     methods: {
         addRandomData: function (count) {
@@ -1002,7 +998,7 @@ var component = Object(__WEBPACK_IMPORTED_MODULE_3__node_modules_vue_loader_lib_
 
 /* hot reload */
 if (false) {
-  var api = require("C:\\Projects\\Others\\segpay_new_mp\\node_modules\\vue-hot-reload-api\\dist\\index.js")
+  var api = require("C:\\Projects\\Others\\vue-components\\node_modules\\vue-hot-reload-api\\dist\\index.js")
   api.install(require('vue'))
   if (api.compatible) {
     module.hot.accept()
@@ -1265,7 +1261,7 @@ var render = function() {
           },
           _vm._l(_vm.pageSizes, function(size) {
             return _c("option", { domProps: { value: size } }, [
-              _vm._v(_vm._s(size))
+              _vm._v(_vm._s(size == 0 ? "all" : size))
             ])
           })
         )

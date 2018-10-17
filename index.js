@@ -41,7 +41,7 @@ var app = new Vue({
         ]
     },
     created: function() {
-        this.addRandomData(15000); // cols.reduce((a, b) => a + b, 0)
+        this.addRandomData(2500); // cols.reduce((a, b) => a + b, 0)
     },
     methods: {
         addRandomData: function (count) {

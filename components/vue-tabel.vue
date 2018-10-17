@@ -54,7 +54,7 @@
 			<button @click="nextPage()">></button>
 			<button @click="lastPage()">>></button>
 			<select v-model="current.page.size">
-				<option v-for="size in pageSizes" :value="size">{{size}}</option>
+				<option v-for="size in pageSizes" :value="size">{{size == 0 ? 'all' : size}}</option>
 			</select>
 		</div>
 	</div>
@@ -69,7 +69,7 @@
 			sortable: {},
 			groupable: {},
 			pageSizes: {
-				default: [2, 50, 100, 'all']
+				default: [25, 50, 100, 0]
 			}
 		},
 		data: function () {
@@ -108,7 +108,7 @@
 				return result;
 			},
 			pageCount: function () {
-				if ((this.current.page.size + "").toLowerCase() === 'all') {
+				if (this.current.page.size == 0) {
 					return 1;
 				}
 				return Math.ceil(this.data.length / this.current.page.size);
@@ -171,16 +171,12 @@
 				if (this.current.page.number > this.pageCount) {
 					this.current.page.number = 1;
 				}
-				if ((this.current.page.size + "").toLowerCase() === 'all') {
+				if (+this.current.page.size == 0) {
 					return this.data;
 				}
-				if (+this.current.page.size === 0) {
-					return [];
-				}
-				// splice
-				return this.data.filter((item, i) => 
-					i >= this.current.page.size * (this.current.page.number - 1)
-					&& i < this.current.page.size * this.current.page.number);
+				let from = this.current.page.size * (this.current.page.number - 1);
+				let to = this.current.page.size * this.current.page.number;
+				return this.data.slice(from, to);
 			},
 			getGroupedPage: function () {
 				if (this.current.page.number > this.pageCount) {
