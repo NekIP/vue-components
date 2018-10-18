@@ -1,16 +1,22 @@
 <template>
-	<div class='report-table'>
-		<div class='col-sm-12 group-area'
+	<div class='vue-table'>
+
+		<div class='group-area'
 			 @dragenter="columnDragEnter(groupAreaName)"
 			 @dragend="columnDragEnd()">
-			 <div v-for="groupingColumn in groupingColumns">
+			<div v-for="groupingColumn in groupingColumns">
 				{{groupingColumn.name}}
 				<button @click="ungroup(groupingColumn)">X</button>
 				<button @click="sort(groupingColumn)">sort</button>
-			 </div>
+			</div>
+			<template v-if="!hasGrouped">
+				Drag a column header and drop it here to group by that column
+			</template>
 		</div>
+
 		<table class="table">
-			<tfoot>
+
+			<tfoot class="footer">
 				<tr>
 					<th v-for="i in groupingColumns"></th>
 					<th v-for="column in columnsInfo">
@@ -20,26 +26,67 @@
 					</th>
 				</tr>
 			</tfoot>
-			<thead>
+
+			<thead class="header">
 				<tr>
-					<th v-for="i in groupingColumns"></th>
-					<th  v-for="column in columnsInfo" 
+					<th class="column" v-for="i in groupingColumns"></th>
+
+					<th  v-for="column in columnsInfo"
 						 draggable="true"
+						 class="column" 
 						 @dragstart="columnDragStart(column)"
 						 @dragenter="columnDragEnter(column)"
 						 @dragend="columnDragEnd()"
-						 @click="sort(column, hasGrouped)">
-						<slot :name="column.id + '-header'"
-							  :cells="getCells(data, column.id)">
-							{{column.name}}
-						</slot>
-						<span v-show="sorting.column === column">
-							{{sorting.ascending ? 'asc' : 'desc'}}
-						</span>
+						 @click="sort(column, hasGrouped)"
+						 :style="{ 'min-width': getMinWidth(column) + 81 }">
+
+						<div class="container"
+							 @mousemove="showHint(column)"
+						 	 @mouseout="hideHint(column)">
+							<div class="name"
+								 :style="{ 'width': getMinWidth(column) }">
+								<slot :name="column.id + '-header'"
+									:cells="getCells(data, column.id)">
+									{{column.name}}
+								</slot>
+								<span v-show="sorting.column === column">
+									<i v-show="sorting.ascending" 
+										class="fa fa-arrow-up arrow" 
+										aria-hidden="true"></i>
+									<i v-show="!sorting.ascending" 
+										class="fa fa-arrow-down arrow" 
+										aria-hidden="true"></i>
+								</span>
+							</div>
+
+							<div class="group"
+								 @click="groupingColumns.indexOf(column) > -1 ? ungroup(column) : group(column)">
+								<i v-show="groupingColumns.indexOf(column) === -1" 
+								   class="fa fa-object-group" 
+								   aria-hidden="true"></i>
+								<i v-show="groupingColumns.indexOf(column) !== -1" 
+								   class="fa fa-object-ungroup" 
+								   aria-hidden="true"></i>
+							</div>
+
+							<div class="filter">
+								<i class="fa fa-filter" aria-hidden="true"></i>
+							</div>
+
+						</div>
+
+						<div v-show="hints[column.id]" class="hint-container">
+							<div class="hint">
+								{{column.name}}
+							</div>
+						</div>
+
 					</th>
 				</tr>
 			</thead>
-			<tbody>
+
+			<tbody class="body">
+
 				<tr v-if="!hasGrouped" 
 					v-for="item in getItemsOnCurrentPage()">
 					<td v-for="column in columnsInfo">
@@ -49,6 +96,7 @@
 						</slot>
 					</td>
 				</tr>
+
 				<template v-if="hasGrouped" 
 						  v-for="(items, key) in getGroupedItemsOnCurrentPage()">
 					<tr v-for="(groupValue, i) in key.split(groupDelimeterChar)">
@@ -61,8 +109,10 @@
 							</slot>
 						</th>
 					</tr>
-					<tr v-for="item in items">
-						<th v-for="i in groupingColumns"></th>
+					<tr v-for="(item, i) in items">
+						<template v-if="i === 0">
+							<th :rowspan="items.length" v-for="i in groupingColumns"></th>
+						</template>
 						<td v-for="column in columnsInfo">
 							<slot :name="column.id + '-column'" 
 								:value="item[column.id]">
@@ -71,9 +121,11 @@
 						</td>
 					</tr>
 				</template>
+
 			</tbody>
 		</table>
-		<div class=col-sm-12>
+
+		<div class="col-sm-12">
 			<button @click="firstPage()">--</button>
 			<button @click="prevPage()">-</button>
 			<template v-for="(item, i) in new Array(pageCount)">
@@ -121,7 +173,8 @@
 				},
 				columnsInfo: this.getColumnsInfo(),
 				groupAreaName: '*group-area*',
-				groupDelimeterChar: ';' /* &#8006; */
+				groupDelimeterChar: ';',
+				hints: {}
 				/*columnsCash: null*/
 			}
 		},
@@ -324,9 +377,11 @@
 			},
 
 			group(column) {
-				this.groupingColumns.push(column);
-				this.sorting.column = null;
-				this.sorting.ascending = false;
+				if (this.groupingColumns.indexOf(column) == -1) {
+					this.groupingColumns.push(column);
+					this.sorting.column = null;
+					this.sorting.ascending = false;
+				}
 			},
 
 			ungroup(column) {
@@ -364,14 +419,146 @@
 					result.push(item[key]);
 				}
 				return result;
+			},
+
+			getMinWidth(column) {
+				return column.name.length * 6 + 10;
+			},
+
+			showHint(column) {
+				this.hints[column.id] = true;
+				this.$forceUpdate();
+			},
+
+			hideHint(column) {
+				this.hints[column.id] = false;
+				this.$forceUpdate();
 			}
 		}
 	}
 </script>
-<style>
-	.group-area {
-		height: 100px;
-		background: blue;
+<style lang="scss">
+	.vue-table {
+		font-family: 'Open Sans', sans-serif;
+		font-size: 12px;
+
+		.group-area {
+			background-color: #415090;
+			border-radius: 3px 3px 0 0;
+			border-color: #e6e6e6;
+			border-bottom-style: solid;
+    		border-bottom-width: 1px;
+			color: rgba(255,255,255,.5);
+			line-height: 2;
+			margin: 0;
+    		padding: .75em .2em .8333em 1em;
+   			cursor: default;
+		}
+
+		.table {
+			font-family: 'Open Sans', sans-serif;
+			font-size: 12px;
+
+			.header { 
+				.column {
+					color: #fff;
+					background: #adaeb0;
+					font-weight: 700;
+					text-transform: uppercase;
+					overflow: visible;
+					text-overflow: ellipsis;
+					border-style: solid;
+					border-width: 0 0 1px 1px;
+					padding: .5em .6em .4em .6em;
+					cursor: pointer;
+
+					.container {
+						display: flex;
+						flex-direction: row;
+						width: auto;
+						padding: 0px;
+
+						.name {
+							flex-basis: 100%;
+
+							.arrow {
+								color: #415090;
+								text-transform: lowercase;
+								margin: 0 0 0 3px;
+							}
+						}
+
+						.filter {
+							font-size: 16px;
+						}
+
+						.group {
+							font-size: 16px;
+							margin: 0 5px 0 0;
+						}
+					}
+
+					.hint-container {
+						position: relative;
+						display: flex;
+						justify-content: center;
+						width: 100%;
+
+						.hint {
+							display: inline-block;
+							position: absolute;
+							top: 2px;
+							margin: 0 auto;
+							padding: 6px 5px 6px 5px;
+							width: auto;
+							background: #3349a7;
+							border-radius: 3px;
+							box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);
+							text-transform: none;
+							font-weight: 400;
+						}
+					}
+				}
+			}
+
+			.body {
+				td {
+					line-height: 1em;
+    				font-size: 11px;
+					padding: .4em .6em;
+					overflow: hidden;
+					vertical-align: middle;
+					text-overflow: ellipsis;
+					border-style: solid;
+    				border-color: #ccc;
+					border-width: 0 0 1px 1px;
+				}
+
+				th {
+					background-color: #f2f2f2;
+					border-style: solid;
+    				border-color: #ccc;
+					border-width: 1px 0 1px 1px;
+				}
+			}
+
+			.footer {
+				th {
+					line-height: 1em;
+    				font-size: 12px;
+					padding: .4em .6em;
+					overflow: hidden;
+					vertical-align: middle;
+					text-overflow: ellipsis;
+					border-style: solid;
+    				border-color: #ccc;
+					border-width: 0 0 1px 1px;
+					background: #3349a7;
+					background-color: #f2f2f2;
+					font-weight: 700;
+				}
+			}
+		}
 	}
 </style>
 

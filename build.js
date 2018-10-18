@@ -193,6 +193,58 @@ module.exports = g;
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["a"] = ({
 	name: 'report-table',
@@ -227,7 +279,8 @@ module.exports = g;
 			},
 			columnsInfo: this.getColumnsInfo(),
 			groupAreaName: '*group-area*',
-			groupDelimeterChar: ';' /* &#8006; */
+			groupDelimeterChar: ';',
+			hints: {}
 			/*columnsCash: null*/
 		}
 	},
@@ -430,9 +483,11 @@ module.exports = g;
 		},
 
 		group(column) {
-			this.groupingColumns.push(column);
-			this.sorting.column = null;
-			this.sorting.ascending = false;
+			if (this.groupingColumns.indexOf(column) == -1) {
+				this.groupingColumns.push(column);
+				this.sorting.column = null;
+				this.sorting.ascending = false;
+			}
 		},
 
 		ungroup(column) {
@@ -470,62 +525,27 @@ module.exports = g;
 				result.push(item[key]);
 			}
 			return result;
+		},
+
+		getMinWidth(column) {
+			return column.name.length * 6 + 10;
+		},
+
+		showHint(column) {
+			this.hints[column.id] = true;
+			this.$forceUpdate();
+		},
+
+		hideHint(column) {
+			this.hints[column.id] = false;
+			this.$forceUpdate();
 		}
 	}
 });
 
 
 /***/ }),
-/* 3 */
-/***/ (function(module, exports, __webpack_require__) {
-
-
-var content = __webpack_require__(13);
-
-if(typeof content === 'string') content = [[module.i, content, '']];
-
-var transform;
-var insertInto;
-
-
-
-var options = {"hmr":true}
-
-options.transform = transform
-options.insertInto = undefined;
-
-var update = __webpack_require__(15)(content, options);
-
-if(content.locals) module.exports = content.locals;
-
-if(false) {
-	module.hot.accept("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=css&", function() {
-		var newContent = require("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=css&");
-
-		if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-
-		var locals = (function(a, b) {
-			var key, idx = 0;
-
-			for(key in a) {
-				if(!b || a[key] !== b[key]) return false;
-				idx++;
-			}
-
-			for(key in b) idx--;
-
-			return idx === 0;
-		}(content.locals, newContent.locals));
-
-		if(!locals) throw new Error('Aborting CSS HMR due to changed css-modules locals.');
-
-		update(newContent);
-	});
-
-	module.hot.dispose(function() { update(); });
-}
-
-/***/ }),
+/* 3 */,
 /* 4 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
@@ -585,7 +605,7 @@ var app = new Vue({
         ]
     },
     created: function() {
-        this.addRandomData(500); // cols.reduce((a, b) => a + b, 0)
+        this.addRandomData(100); // cols.reduce((a, b) => a + b, 0)
     },
     methods: {
         addRandomData: function (count) {
@@ -1116,7 +1136,7 @@ process.umask = function() { return 0; };
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__vue_tabel_vue_vue_type_template_id_05b7feca___ = __webpack_require__(10);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__vue_tabel_vue_vue_type_script_lang_js___ = __webpack_require__(1);
 /* unused harmony namespace reexport */
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__vue_tabel_vue_vue_type_style_index_0_lang_css___ = __webpack_require__(12);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__vue_tabel_vue_vue_type_style_index_0_lang_scss___ = __webpack_require__(19);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__node_modules_vue_loader_lib_runtime_componentNormalizer_js__ = __webpack_require__(17);
 
 
@@ -1180,11 +1200,11 @@ var render = function() {
   var _vm = this
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
-  return _c("div", { staticClass: "report-table" }, [
+  return _c("div", { staticClass: "vue-table" }, [
     _c(
       "div",
       {
-        staticClass: "col-sm-12 group-area",
+        staticClass: "group-area",
         on: {
           dragenter: function($event) {
             _vm.columnDragEnter(_vm.groupAreaName)
@@ -1194,38 +1214,49 @@ var render = function() {
           }
         }
       },
-      _vm._l(_vm.groupingColumns, function(groupingColumn) {
-        return _c("div", [
-          _vm._v("\n\t\t\t" + _vm._s(groupingColumn.name) + "\n\t\t\t"),
-          _c(
-            "button",
-            {
-              on: {
-                click: function($event) {
-                  _vm.ungroup(groupingColumn)
+      [
+        _vm._l(_vm.groupingColumns, function(groupingColumn) {
+          return _c("div", [
+            _vm._v("\n\t\t\t" + _vm._s(groupingColumn.name) + "\n\t\t\t"),
+            _c(
+              "button",
+              {
+                on: {
+                  click: function($event) {
+                    _vm.ungroup(groupingColumn)
+                  }
                 }
-              }
-            },
-            [_vm._v("X")]
-          ),
-          _vm._v(" "),
-          _c(
-            "button",
-            {
-              on: {
-                click: function($event) {
-                  _vm.sort(groupingColumn)
+              },
+              [_vm._v("X")]
+            ),
+            _vm._v(" "),
+            _c(
+              "button",
+              {
+                on: {
+                  click: function($event) {
+                    _vm.sort(groupingColumn)
+                  }
                 }
-              }
-            },
-            [_vm._v("sort")]
-          )
-        ])
-      })
+              },
+              [_vm._v("sort")]
+            )
+          ])
+        }),
+        _vm._v(" "),
+        !_vm.hasGrouped
+          ? [
+              _vm._v(
+                "\n\t\t\tDrag a column header and drop it here to group by that column\n\t\t"
+              )
+            ]
+          : _vm._e()
+      ],
+      2
     ),
     _vm._v(" "),
     _c("table", { staticClass: "table" }, [
-      _c("tfoot", [
+      _c("tfoot", { staticClass: "footer" }, [
         _c(
           "tr",
           [
@@ -1249,18 +1280,20 @@ var render = function() {
         )
       ]),
       _vm._v(" "),
-      _c("thead", [
+      _c("thead", { staticClass: "header" }, [
         _c(
           "tr",
           [
             _vm._l(_vm.groupingColumns, function(i) {
-              return _c("th")
+              return _c("th", { staticClass: "column" })
             }),
             _vm._v(" "),
             _vm._l(_vm.columnsInfo, function(column) {
               return _c(
                 "th",
                 {
+                  staticClass: "column",
+                  style: { "min-width": _vm.getMinWidth(column) + 81 },
                   attrs: { draggable: "true" },
                   on: {
                     dragstart: function($event) {
@@ -1278,38 +1311,156 @@ var render = function() {
                   }
                 },
                 [
-                  _vm._t(
-                    column.id + "-header",
+                  _c(
+                    "div",
+                    {
+                      staticClass: "container",
+                      on: {
+                        mousemove: function($event) {
+                          _vm.showHint(column)
+                        },
+                        mouseout: function($event) {
+                          _vm.hideHint(column)
+                        }
+                      }
+                    },
                     [
-                      _vm._v(
-                        "\n\t\t\t\t\t\t" + _vm._s(column.name) + "\n\t\t\t\t\t"
-                      )
-                    ],
-                    { cells: _vm.getCells(_vm.data, column.id) }
+                      _c(
+                        "div",
+                        {
+                          staticClass: "name",
+                          style: { width: _vm.getMinWidth(column) }
+                        },
+                        [
+                          _vm._t(
+                            column.id + "-header",
+                            [
+                              _vm._v(
+                                "\n\t\t\t\t\t\t\t\t" +
+                                  _vm._s(column.name) +
+                                  "\n\t\t\t\t\t\t\t"
+                              )
+                            ],
+                            { cells: _vm.getCells(_vm.data, column.id) }
+                          ),
+                          _vm._v(" "),
+                          _c(
+                            "span",
+                            {
+                              directives: [
+                                {
+                                  name: "show",
+                                  rawName: "v-show",
+                                  value: _vm.sorting.column === column,
+                                  expression: "sorting.column === column"
+                                }
+                              ]
+                            },
+                            [
+                              _c("i", {
+                                directives: [
+                                  {
+                                    name: "show",
+                                    rawName: "v-show",
+                                    value: _vm.sorting.ascending,
+                                    expression: "sorting.ascending"
+                                  }
+                                ],
+                                staticClass: "fa fa-arrow-up arrow",
+                                attrs: { "aria-hidden": "true" }
+                              }),
+                              _vm._v(" "),
+                              _c("i", {
+                                directives: [
+                                  {
+                                    name: "show",
+                                    rawName: "v-show",
+                                    value: !_vm.sorting.ascending,
+                                    expression: "!sorting.ascending"
+                                  }
+                                ],
+                                staticClass: "fa fa-arrow-down arrow",
+                                attrs: { "aria-hidden": "true" }
+                              })
+                            ]
+                          )
+                        ],
+                        2
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        {
+                          staticClass: "group",
+                          on: {
+                            click: function($event) {
+                              _vm.groupingColumns.indexOf(column) > -1
+                                ? _vm.ungroup(column)
+                                : _vm.group(column)
+                            }
+                          }
+                        },
+                        [
+                          _c("i", {
+                            directives: [
+                              {
+                                name: "show",
+                                rawName: "v-show",
+                                value:
+                                  _vm.groupingColumns.indexOf(column) === -1,
+                                expression:
+                                  "groupingColumns.indexOf(column) === -1"
+                              }
+                            ],
+                            staticClass: "fa fa-object-group",
+                            attrs: { "aria-hidden": "true" }
+                          }),
+                          _vm._v(" "),
+                          _c("i", {
+                            directives: [
+                              {
+                                name: "show",
+                                rawName: "v-show",
+                                value:
+                                  _vm.groupingColumns.indexOf(column) !== -1,
+                                expression:
+                                  "groupingColumns.indexOf(column) !== -1"
+                              }
+                            ],
+                            staticClass: "fa fa-object-ungroup",
+                            attrs: { "aria-hidden": "true" }
+                          })
+                        ]
+                      ),
+                      _vm._v(" "),
+                      _vm._m(0, true)
+                    ]
                   ),
                   _vm._v(" "),
                   _c(
-                    "span",
+                    "div",
                     {
                       directives: [
                         {
                           name: "show",
                           rawName: "v-show",
-                          value: _vm.sorting.column === column,
-                          expression: "sorting.column === column"
+                          value: _vm.hints[column.id],
+                          expression: "hints[column.id]"
                         }
-                      ]
+                      ],
+                      staticClass: "hint-container"
                     },
                     [
-                      _vm._v(
-                        "\n\t\t\t\t\t\t" +
-                          _vm._s(_vm.sorting.ascending ? "asc" : "desc") +
-                          "\n\t\t\t\t\t"
-                      )
+                      _c("div", { staticClass: "hint" }, [
+                        _vm._v(
+                          "\n\t\t\t\t\t\t\t" +
+                            _vm._s(column.name) +
+                            "\n\t\t\t\t\t\t"
+                        )
+                      ])
                     ]
                   )
-                ],
-                2
+                ]
               )
             })
           ],
@@ -1319,6 +1470,7 @@ var render = function() {
       _vm._v(" "),
       _c(
         "tbody",
+        { staticClass: "body" },
         [
           _vm._l(_vm.getItemsOnCurrentPage(), function(item) {
             return !_vm.hasGrouped
@@ -1400,13 +1552,17 @@ var render = function() {
                     )
                   }),
                   _vm._v(" "),
-                  _vm._l(items, function(item) {
+                  _vm._l(items, function(item, i) {
                     return _c(
                       "tr",
                       [
-                        _vm._l(_vm.groupingColumns, function(i) {
-                          return _c("th")
-                        }),
+                        i === 0
+                          ? _vm._l(_vm.groupingColumns, function(i) {
+                              return _c("th", {
+                                attrs: { rowspan: items.length }
+                              })
+                            })
+                          : _vm._e(),
                         _vm._v(" "),
                         _vm._l(_vm.columnsInfo, function(column) {
                           return _c(
@@ -1541,36 +1697,23 @@ var render = function() {
     )
   ])
 }
-var staticRenderFns = []
+var staticRenderFns = [
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("div", { staticClass: "filter" }, [
+      _c("i", { staticClass: "fa fa-filter", attrs: { "aria-hidden": "true" } })
+    ])
+  }
+]
 render._withStripped = true
 
 
 
 /***/ }),
-/* 12 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_css___ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_css____default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_css___);
-/* unused harmony reexport namespace */
- /* unused harmony default export */ var _unused_webpack_default_export = (__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_css____default.a); 
-
-/***/ }),
-/* 13 */
-/***/ (function(module, exports, __webpack_require__) {
-
-exports = module.exports = __webpack_require__(14)(false);
-// imports
-
-
-// module
-exports.push([module.i, "\n.group-area {\n\theight: 100px;\n\tbackground: blue;\n}\n", ""]);
-
-// exports
-
-
-/***/ }),
+/* 12 */,
+/* 13 */,
 /* 14 */
 /***/ (function(module, exports) {
 
@@ -2252,6 +2395,80 @@ function normalizeComponent (
     options: options
   }
 }
+
+
+/***/ }),
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+var content = __webpack_require__(20);
+
+if(typeof content === 'string') content = [[module.i, content, '']];
+
+var transform;
+var insertInto;
+
+
+
+var options = {"hmr":true}
+
+options.transform = transform
+options.insertInto = undefined;
+
+var update = __webpack_require__(15)(content, options);
+
+if(content.locals) module.exports = content.locals;
+
+if(false) {
+	module.hot.accept("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/sass-loader/lib/loader.js??ref--2-3!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=scss&", function() {
+		var newContent = require("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/sass-loader/lib/loader.js??ref--2-3!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=scss&");
+
+		if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+
+		var locals = (function(a, b) {
+			var key, idx = 0;
+
+			for(key in a) {
+				if(!b || a[key] !== b[key]) return false;
+				idx++;
+			}
+
+			for(key in b) idx--;
+
+			return idx === 0;
+		}(content.locals, newContent.locals));
+
+		if(!locals) throw new Error('Aborting CSS HMR due to changed css-modules locals.');
+
+		update(newContent);
+	});
+
+	module.hot.dispose(function() { update(); });
+}
+
+/***/ }),
+/* 19 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss___ = __webpack_require__(18);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss____default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss___);
+/* unused harmony reexport namespace */
+ /* unused harmony default export */ var _unused_webpack_default_export = (__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss____default.a); 
+
+/***/ }),
+/* 20 */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(14)(false);
+// imports
+
+
+// module
+exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n}\n.vue-table .table {\n    font-family: 'Open Sans', sans-serif;\n    font-size: 12px;\n}\n.vue-table .table .header .column {\n      color: #fff;\n      background: #adaeb0;\n      font-weight: 700;\n      text-transform: uppercase;\n      overflow: visible;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-width: 0 0 1px 1px;\n      padding: .5em .6em .4em .6em;\n      cursor: pointer;\n}\n.vue-table .table .header .column .container {\n        display: flex;\n        flex-direction: row;\n        width: auto;\n        padding: 0px;\n}\n.vue-table .table .header .column .container .name {\n          flex-basis: 100%;\n}\n.vue-table .table .header .column .container .name .arrow {\n            color: #415090;\n            text-transform: lowercase;\n            margin: 0 0 0 3px;\n}\n.vue-table .table .header .column .container .filter {\n          font-size: 16px;\n}\n.vue-table .table .header .column .container .group {\n          font-size: 16px;\n          margin: 0 5px 0 0;\n}\n.vue-table .table .header .column .hint-container {\n        position: relative;\n        display: flex;\n        justify-content: center;\n        width: 100%;\n}\n.vue-table .table .header .column .hint-container .hint {\n          display: inline-block;\n          position: absolute;\n          top: 2px;\n          margin: 0 auto;\n          padding: 6px 5px 6px 5px;\n          width: auto;\n          background: #3349a7;\n          border-radius: 3px;\n          box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n          text-transform: none;\n          font-weight: 400;\n}\n.vue-table .table .body td {\n      line-height: 1em;\n      font-size: 11px;\n      padding: .4em .6em;\n      overflow: hidden;\n      vertical-align: middle;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 0 0 1px 1px;\n}\n.vue-table .table .body th {\n      background-color: #f2f2f2;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 1px 0 1px 1px;\n}\n.vue-table .table .footer th {\n      line-height: 1em;\n      font-size: 12px;\n      padding: .4em .6em;\n      overflow: hidden;\n      vertical-align: middle;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 0 0 1px 1px;\n      background: #3349a7;\n      background-color: #f2f2f2;\n      font-weight: 700;\n}\n", ""]);
+
+// exports
 
 
 /***/ })
