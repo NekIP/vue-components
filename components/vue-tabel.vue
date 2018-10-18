@@ -91,9 +91,10 @@
 			</thead>
 
 			<tbody class="body">
+
 				<tr v-if="!hasGrouped" 
-					v-for="(item, i) in getItemsOnCurrentPage()"
-					:key="i"
+					v-for="item in getItemsOnCurrentPage()"
+					:key="item"
 					class="lighting-row">
 					<td v-for="column in columnsInfo">
 						<slot :name="column.id + '-column'" 
@@ -102,6 +103,7 @@
 						</slot>
 					</td>
 				</tr>
+
 				<template v-if="hasGrouped" 
 						  v-for="(items, key) in getGroupedItemsOnCurrentPage()">
 					<tr v-for="(groupValue, i) in key.split(groupDelimeterChar)">
@@ -444,7 +446,7 @@
 	}
 </script>
 <style lang="scss">
-	$rotate-speed: 0.3s;
+	$rotate-speed: 0.15s;
 	$rotate-angle: 180deg;
 
 	.vue-table {
@@ -559,12 +561,16 @@
 				}
 
 				.sort-descending-enter-active {
+					border: 2px solid #77777750;
+					border-radius: 30px;
 					@include animation(cog, $rotate-speed);
 				}
 				.sort-descending-leave-active {
 					display: none;
 				}
 				.sort-ascending-enter-active {
+					border: 2px solid #77777750;
+					border-radius: 30px;
 					@include animation(cog, $rotate-speed);
 				}
 				.sort-ascending-leave-active {
@@ -592,8 +598,8 @@
 					}
 				}
 
-				.rows-move {
-					transition: transform 1s;
+				.flip-list-move {
+					transition: transform 5s;
 				}
 			}
 
