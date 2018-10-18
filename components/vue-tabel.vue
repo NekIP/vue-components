@@ -38,7 +38,7 @@
 						 @dragenter="columnDragEnter(column)"
 						 @dragend="columnDragEnd()"
 						 @click="sort(column, hasGrouped)"
-						 :style="{ 'min-width': getMinWidth(column) + 81 }">
+						 :style="{ 'min-width': getMinWidth(column) + 81, width: column.width || 'auto' }">
 
 						<div class="container"
 							 @mousemove="showHint(column)"
@@ -79,6 +79,7 @@
 							</div>
 
 						</div>
+						<div class="mover"></div>
 						<!--
 							<div class="hint-container">
 								<div class="hint">
@@ -233,7 +234,8 @@
 								type: defaultType,
 								sortable: this.sortable || false,
 								filtrable: this.filtrable || false,
-								groupable: this.groupable || false
+								groupable: this.groupable || false,
+								width: undefined
 							}
 						case 'object':
 							if (Array.isArray(x)){
@@ -243,7 +245,8 @@
 									type: x[2] || defaultType,
 									sortable: this.sortable || false,
 									filtrable: this.filtrable || false,
-									groupable: this.groupable || false
+									groupable: this.groupable || false,
+									width: undefined
 								}
 							}
 							else {
@@ -253,7 +256,8 @@
 									type: x.type || defaultType,
 									sortable: x.sortable ||  this.sortable || false,
 									filtrable: x.filtrable ||  this.filtrable || false,
-									groupable: x.groupable || this.groupable || false
+									groupable: x.groupable || this.groupable || false,
+									width: x.width
 								}
 							}
 					}

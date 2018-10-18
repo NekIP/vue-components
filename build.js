@@ -253,6 +253,7 @@ module.exports = g;
 //
 //
 //
+//
 
 /* harmony default export */ __webpack_exports__["a"] = ({
 	name: 'report-table',
@@ -339,7 +340,8 @@ module.exports = g;
 							type: defaultType,
 							sortable: this.sortable || false,
 							filtrable: this.filtrable || false,
-							groupable: this.groupable || false
+							groupable: this.groupable || false,
+							width: undefined
 						}
 					case 'object':
 						if (Array.isArray(x)){
@@ -349,7 +351,8 @@ module.exports = g;
 								type: x[2] || defaultType,
 								sortable: this.sortable || false,
 								filtrable: this.filtrable || false,
-								groupable: this.groupable || false
+								groupable: this.groupable || false,
+								width: undefined
 							}
 						}
 						else {
@@ -359,7 +362,8 @@ module.exports = g;
 								type: x.type || defaultType,
 								sortable: x.sortable ||  this.sortable || false,
 								filtrable: x.filtrable ||  this.filtrable || false,
-								groupable: x.groupable || this.groupable || false
+								groupable: x.groupable || this.groupable || false,
+								width: x.width
 							}
 						}
 				}
@@ -1350,7 +1354,10 @@ var render = function() {
                 "th",
                 {
                   staticClass: "column",
-                  style: { "min-width": _vm.getMinWidth(column) + 81 },
+                  style: {
+                    "min-width": _vm.getMinWidth(column) + 81,
+                    width: column.width || "auto"
+                  },
                   attrs: { draggable: "true" },
                   on: {
                     dragstart: function($event) {
@@ -1516,7 +1523,9 @@ var render = function() {
                       _vm._v(" "),
                       _vm._m(0, true)
                     ]
-                  )
+                  ),
+                  _vm._v(" "),
+                  _c("div", { staticClass: "mover" })
                 ]
               )
             })
