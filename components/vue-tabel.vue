@@ -32,8 +32,8 @@
 					<th class="column" v-for="i in groupingColumns"></th>
 
 					<th  v-for="column in columnsInfo"
+						 class="column"
 						 draggable="true"
-						 class="column" 
 						 @dragstart="columnDragStart(column)"
 						 @dragenter="columnDragEnter(column)"
 						 @dragend="columnDragEnd()"
@@ -43,19 +43,24 @@
 						<div class="container"
 							 @mousemove="showHint(column)"
 						 	 @mouseout="hideHint(column)">
-							<div class="name"
+							<div class="name hint hint--bottom hint--info"
+								 :data-hint="column.name"
 								 :style="{ 'width': getMinWidth(column) }">
 								<slot :name="column.id + '-header'"
 									:cells="getCells(data, column.id)">
 									{{column.name}}
 								</slot>
 								<span v-show="sorting.column === column">
-									<i v-show="sorting.ascending" 
-										class="fa fa-arrow-up arrow" 
-										aria-hidden="true"></i>
-									<i v-show="!sorting.ascending" 
-										class="fa fa-arrow-down arrow" 
-										aria-hidden="true"></i>
+									<transition name="sort-ascending" mode="out-in">
+										<i v-show="sorting.ascending" 
+											class="fa fa-arrow-up arrow" 
+											aria-hidden="true"></i>
+									</transition>
+									<transition name="sort-descending" mode="out-in">
+										<i v-show="!sorting.ascending" 
+											class="fa fa-arrow-down arrow" 
+											aria-hidden="true"></i>
+									</transition>
 								</span>
 							</div>
 
@@ -74,29 +79,29 @@
 							</div>
 
 						</div>
-
-						<div v-show="hints[column.id]" class="hint-container">
-							<div class="hint">
-								{{column.name}}
+						<!--
+							<div class="hint-container">
+								<div class="hint">
+									{{column.name}}
+								</div>
 							</div>
-						</div>
-
+						-->
 					</th>
 				</tr>
 			</thead>
 
 			<tbody class="body">
-
 				<tr v-if="!hasGrouped" 
-					v-for="item in getItemsOnCurrentPage()">
+					v-for="(item, i) in getItemsOnCurrentPage()"
+					:key="i"
+					class="lighting-row">
 					<td v-for="column in columnsInfo">
 						<slot :name="column.id + '-column'" 
-							  :value="item[column.id]">
+							:value="item[column.id]">
 							{{item[column.id]}}
 						</slot>
 					</td>
 				</tr>
-
 				<template v-if="hasGrouped" 
 						  v-for="(items, key) in getGroupedItemsOnCurrentPage()">
 					<tr v-for="(groupValue, i) in key.split(groupDelimeterChar)">
@@ -109,7 +114,8 @@
 							</slot>
 						</th>
 					</tr>
-					<tr v-for="(item, i) in items">
+					<tr v-for="(item, i) in items"
+						class="lighting-row">
 						<template v-if="i === 0">
 							<th :rowspan="items.length" v-for="i in groupingColumns"></th>
 						</template>
@@ -174,7 +180,7 @@
 				columnsInfo: this.getColumnsInfo(),
 				groupAreaName: '*group-area*',
 				groupDelimeterChar: ';',
-				hints: {}
+				hints: {}	// show hint
 				/*columnsCash: null*/
 			}
 		},
@@ -438,6 +444,9 @@
 	}
 </script>
 <style lang="scss">
+	$rotate-speed: 0.3s;
+	$rotate-angle: 180deg;
+
 	.vue-table {
 		font-family: 'Open Sans', sans-serif;
 		font-size: 12px;
@@ -500,7 +509,7 @@
 
 					.hint-container {
 						position: relative;
-						display: flex;
+						display: none/*flex*/;
 						justify-content: center;
 						width: 100%;
 
@@ -519,6 +528,73 @@
 						}
 					}
 				}
+
+				.hint:before {
+					border-bottom-color: #adaeb0;
+				}
+
+				.hint:after {
+					text-transform: none;
+					background-color: #3349a7;
+				}
+
+				@mixin animation($cog, $speed) {
+    				-webkit-animation-name: $cog;
+					-webkit-animation-duration: $speed;
+					-webkit-animation-iteration-count: infinite;
+					-webkit-animation-timing-function: linear;
+					-moz-animation-name: $cog;
+					-moz-animation-duration: $speed;
+					-moz-animation-iteration-count: infinite;
+					-moz-animation-timing-function: linear;
+					-ms-animation-name: $cog;
+					-ms-animation-duration: $speed;
+					-ms-animation-iteration-count: infinite;
+					-ms-animation-timing-function: linear;
+					
+					animation-name: $cog;
+					animation-duration: $speed;
+					animation-iteration-count: infinite;
+					animation-timing-function: linear;
+				}
+
+				.sort-descending-enter-active {
+					@include animation(cog, $rotate-speed);
+				}
+				.sort-descending-leave-active {
+					display: none;
+				}
+				.sort-ascending-enter-active {
+					@include animation(cog, $rotate-speed);
+				}
+				.sort-ascending-leave-active {
+					display: none;
+				}
+
+				@-ms-keyframes cog {
+					from { -ms-transform: rotate($rotate-angle); }
+					to { -ms-transform: rotate(0deg); }
+				}
+				@-moz-keyframes cog {
+					from { -moz-transform: rotate($rotate-angle); }
+					to { -moz-transform: rotate(0deg); }
+				}
+				@-webkit-keyframes cog {
+					from { -webkit-transform: rotate($rotate-angle); }
+					to { -webkit-transform: rotate(0deg); }
+				}
+				@keyframes cog {
+					from {
+						transform:rotate($rotate-angle);
+					}
+					to {
+						transform:rotate(0deg);
+					}
+				}
+
+				.rows-move {
+					transition: transform 1s;
+				}
 			}
 
 			.body {
@@ -532,6 +608,7 @@
 					border-style: solid;
     				border-color: #ccc;
 					border-width: 0 0 1px 1px;
+					background-color: #ffffff;
 				}
 
 				th {
@@ -539,6 +616,12 @@
 					border-style: solid;
     				border-color: #ccc;
 					border-width: 1px 0 1px 1px;
+				}
+
+				.lighting-row:hover {
+					td {
+						background-color: #ececec;
+					}
 				}
 			}
 

@@ -245,6 +245,12 @@ module.exports = g;
 //
 //
 //
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["a"] = ({
 	name: 'report-table',
@@ -280,7 +286,7 @@ module.exports = g;
 			columnsInfo: this.getColumnsInfo(),
 			groupAreaName: '*group-area*',
 			groupDelimeterChar: ';',
-			hints: {}
+			hints: {}	// show hint
 			/*columnsCash: null*/
 		}
 	},
@@ -545,7 +551,56 @@ module.exports = g;
 
 
 /***/ }),
-/* 3 */,
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+var content = __webpack_require__(13);
+
+if(typeof content === 'string') content = [[module.i, content, '']];
+
+var transform;
+var insertInto;
+
+
+
+var options = {"hmr":true}
+
+options.transform = transform
+options.insertInto = undefined;
+
+var update = __webpack_require__(15)(content, options);
+
+if(content.locals) module.exports = content.locals;
+
+if(false) {
+	module.hot.accept("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/sass-loader/lib/loader.js??ref--2-3!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=scss&", function() {
+		var newContent = require("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/sass-loader/lib/loader.js??ref--2-3!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=scss&");
+
+		if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+
+		var locals = (function(a, b) {
+			var key, idx = 0;
+
+			for(key in a) {
+				if(!b || a[key] !== b[key]) return false;
+				idx++;
+			}
+
+			for(key in b) idx--;
+
+			return idx === 0;
+		}(content.locals, newContent.locals));
+
+		if(!locals) throw new Error('Aborting CSS HMR due to changed css-modules locals.');
+
+		update(newContent);
+	});
+
+	module.hot.dispose(function() { update(); });
+}
+
+/***/ }),
 /* 4 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
@@ -1136,7 +1191,7 @@ process.umask = function() { return 0; };
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__vue_tabel_vue_vue_type_template_id_05b7feca___ = __webpack_require__(10);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__vue_tabel_vue_vue_type_script_lang_js___ = __webpack_require__(1);
 /* unused harmony namespace reexport */
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__vue_tabel_vue_vue_type_style_index_0_lang_scss___ = __webpack_require__(19);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__vue_tabel_vue_vue_type_style_index_0_lang_scss___ = __webpack_require__(12);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__node_modules_vue_loader_lib_runtime_componentNormalizer_js__ = __webpack_require__(17);
 
 
@@ -1328,8 +1383,9 @@ var render = function() {
                       _c(
                         "div",
                         {
-                          staticClass: "name",
-                          style: { width: _vm.getMinWidth(column) }
+                          staticClass: "name hint hint--bottom hint--info",
+                          style: { width: _vm.getMinWidth(column) },
+                          attrs: { "data-hint": column.name }
                         },
                         [
                           _vm._t(
@@ -1357,32 +1413,55 @@ var render = function() {
                               ]
                             },
                             [
-                              _c("i", {
-                                directives: [
-                                  {
-                                    name: "show",
-                                    rawName: "v-show",
-                                    value: _vm.sorting.ascending,
-                                    expression: "sorting.ascending"
+                              _c(
+                                "transition",
+                                {
+                                  attrs: {
+                                    name: "sort-ascending",
+                                    mode: "out-in"
                                   }
-                                ],
-                                staticClass: "fa fa-arrow-up arrow",
-                                attrs: { "aria-hidden": "true" }
-                              }),
+                                },
+                                [
+                                  _c("i", {
+                                    directives: [
+                                      {
+                                        name: "show",
+                                        rawName: "v-show",
+                                        value: _vm.sorting.ascending,
+                                        expression: "sorting.ascending"
+                                      }
+                                    ],
+                                    staticClass: "fa fa-arrow-up arrow",
+                                    attrs: { "aria-hidden": "true" }
+                                  })
+                                ]
+                              ),
                               _vm._v(" "),
-                              _c("i", {
-                                directives: [
-                                  {
-                                    name: "show",
-                                    rawName: "v-show",
-                                    value: !_vm.sorting.ascending,
-                                    expression: "!sorting.ascending"
+                              _c(
+                                "transition",
+                                {
+                                  attrs: {
+                                    name: "sort-descending",
+                                    mode: "out-in"
                                   }
-                                ],
-                                staticClass: "fa fa-arrow-down arrow",
-                                attrs: { "aria-hidden": "true" }
-                              })
-                            ]
+                                },
+                                [
+                                  _c("i", {
+                                    directives: [
+                                      {
+                                        name: "show",
+                                        rawName: "v-show",
+                                        value: !_vm.sorting.ascending,
+                                        expression: "!sorting.ascending"
+                                      }
+                                    ],
+                                    staticClass: "fa fa-arrow-down arrow",
+                                    attrs: { "aria-hidden": "true" }
+                                  })
+                                ]
+                              )
+                            ],
+                            1
                           )
                         ],
                         2
@@ -1435,30 +1514,6 @@ var render = function() {
                       _vm._v(" "),
                       _vm._m(0, true)
                     ]
-                  ),
-                  _vm._v(" "),
-                  _c(
-                    "div",
-                    {
-                      directives: [
-                        {
-                          name: "show",
-                          rawName: "v-show",
-                          value: _vm.hints[column.id],
-                          expression: "hints[column.id]"
-                        }
-                      ],
-                      staticClass: "hint-container"
-                    },
-                    [
-                      _c("div", { staticClass: "hint" }, [
-                        _vm._v(
-                          "\n\t\t\t\t\t\t\t" +
-                            _vm._s(column.name) +
-                            "\n\t\t\t\t\t\t"
-                        )
-                      ])
-                    ]
                   )
                 ]
               )
@@ -1472,10 +1527,11 @@ var render = function() {
         "tbody",
         { staticClass: "body" },
         [
-          _vm._l(_vm.getItemsOnCurrentPage(), function(item) {
+          _vm._l(_vm.getItemsOnCurrentPage(), function(item, i) {
             return !_vm.hasGrouped
               ? _c(
                   "tr",
+                  { key: i, staticClass: "lighting-row" },
                   _vm._l(_vm.columnsInfo, function(column) {
                     return _c(
                       "td",
@@ -1555,6 +1611,7 @@ var render = function() {
                   _vm._l(items, function(item, i) {
                     return _c(
                       "tr",
+                      { staticClass: "lighting-row" },
                       [
                         i === 0
                           ? _vm._l(_vm.groupingColumns, function(i) {
@@ -1712,8 +1769,30 @@ render._withStripped = true
 
 
 /***/ }),
-/* 12 */,
-/* 13 */,
+/* 12 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss___ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss____default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss___);
+/* unused harmony reexport namespace */
+ /* unused harmony default export */ var _unused_webpack_default_export = (__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss____default.a); 
+
+/***/ }),
+/* 13 */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(14)(false);
+// imports
+
+
+// module
+exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n}\n.vue-table .table {\n    font-family: 'Open Sans', sans-serif;\n    font-size: 12px;\n}\n.vue-table .table .header .column {\n      color: #fff;\n      background: #adaeb0;\n      font-weight: 700;\n      text-transform: uppercase;\n      overflow: visible;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-width: 0 0 1px 1px;\n      padding: .5em .6em .4em .6em;\n      cursor: pointer;\n}\n.vue-table .table .header .column .container {\n        display: flex;\n        flex-direction: row;\n        width: auto;\n        padding: 0px;\n}\n.vue-table .table .header .column .container .name {\n          flex-basis: 100%;\n}\n.vue-table .table .header .column .container .name .arrow {\n            color: #415090;\n            text-transform: lowercase;\n            margin: 0 0 0 3px;\n}\n.vue-table .table .header .column .container .filter {\n          font-size: 16px;\n}\n.vue-table .table .header .column .container .group {\n          font-size: 16px;\n          margin: 0 5px 0 0;\n}\n.vue-table .table .header .column .hint-container {\n        position: relative;\n        display: none;\n        justify-content: center;\n        width: 100%;\n}\n.vue-table .table .header .column .hint-container .hint {\n          display: inline-block;\n          position: absolute;\n          top: 2px;\n          margin: 0 auto;\n          padding: 6px 5px 6px 5px;\n          width: auto;\n          background: #3349a7;\n          border-radius: 3px;\n          box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n          text-transform: none;\n          font-weight: 400;\n}\n.vue-table .table .header .hint:before {\n      border-bottom-color: #adaeb0;\n}\n.vue-table .table .header .hint:after {\n      text-transform: none;\n      background-color: #3349a7;\n}\n.vue-table .table .header .sort-descending-enter-active {\n      -webkit-animation-name: cog;\n      -webkit-animation-duration: 0.3s;\n      -webkit-animation-iteration-count: infinite;\n      -webkit-animation-timing-function: linear;\n      -moz-animation-name: cog;\n      -moz-animation-duration: 0.3s;\n      -moz-animation-iteration-count: infinite;\n      -moz-animation-timing-function: linear;\n      -ms-animation-name: cog;\n      -ms-animation-duration: 0.3s;\n      -ms-animation-iteration-count: infinite;\n      -ms-animation-timing-function: linear;\n      animation-name: cog;\n      animation-duration: 0.3s;\n      animation-iteration-count: infinite;\n      animation-timing-function: linear;\n}\n.vue-table .table .header .sort-descending-leave-active {\n      display: none;\n}\n.vue-table .table .header .sort-ascending-enter-active {\n      -webkit-animation-name: cog;\n      -webkit-animation-duration: 0.3s;\n      -webkit-animation-iteration-count: infinite;\n      -webkit-animation-timing-function: linear;\n      -moz-animation-name: cog;\n      -moz-animation-duration: 0.3s;\n      -moz-animation-iteration-count: infinite;\n      -moz-animation-timing-function: linear;\n      -ms-animation-name: cog;\n      -ms-animation-duration: 0.3s;\n      -ms-animation-iteration-count: infinite;\n      -ms-animation-timing-function: linear;\n      animation-name: cog;\n      animation-duration: 0.3s;\n      animation-iteration-count: infinite;\n      animation-timing-function: linear;\n}\n.vue-table .table .header .sort-ascending-leave-active {\n      display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table .header .rows-move {\n      transition: transform 1s;\n}\n.vue-table .table .body td {\n      line-height: 1em;\n      font-size: 11px;\n      padding: .4em .6em;\n      overflow: hidden;\n      vertical-align: middle;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 0 0 1px 1px;\n      background-color: #ffffff;\n}\n.vue-table .table .body th {\n      background-color: #f2f2f2;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 1px 0 1px 1px;\n}\n.vue-table .table .body .lighting-row:hover td {\n      background-color: #ececec;\n}\n.vue-table .table .footer th {\n      line-height: 1em;\n      font-size: 12px;\n      padding: .4em .6em;\n      overflow: hidden;\n      vertical-align: middle;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 0 0 1px 1px;\n      background: #3349a7;\n      background-color: #f2f2f2;\n      font-weight: 700;\n}\n", ""]);
+
+// exports
+
+
+/***/ }),
 /* 14 */
 /***/ (function(module, exports) {
 
@@ -2395,80 +2474,6 @@ function normalizeComponent (
     options: options
   }
 }
-
-
-/***/ }),
-/* 18 */
-/***/ (function(module, exports, __webpack_require__) {
-
-
-var content = __webpack_require__(20);
-
-if(typeof content === 'string') content = [[module.i, content, '']];
-
-var transform;
-var insertInto;
-
-
-
-var options = {"hmr":true}
-
-options.transform = transform
-options.insertInto = undefined;
-
-var update = __webpack_require__(15)(content, options);
-
-if(content.locals) module.exports = content.locals;
-
-if(false) {
-	module.hot.accept("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/sass-loader/lib/loader.js??ref--2-3!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=scss&", function() {
-		var newContent = require("!!../node_modules/css-loader/index.js!../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../node_modules/resolve-url-loader/index.js!../node_modules/sass-loader/lib/loader.js??ref--2-3!../node_modules/vue-loader/lib/index.js??vue-loader-options!./vue-tabel.vue?vue&type=style&index=0&lang=scss&");
-
-		if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-
-		var locals = (function(a, b) {
-			var key, idx = 0;
-
-			for(key in a) {
-				if(!b || a[key] !== b[key]) return false;
-				idx++;
-			}
-
-			for(key in b) idx--;
-
-			return idx === 0;
-		}(content.locals, newContent.locals));
-
-		if(!locals) throw new Error('Aborting CSS HMR due to changed css-modules locals.');
-
-		update(newContent);
-	});
-
-	module.hot.dispose(function() { update(); });
-}
-
-/***/ }),
-/* 19 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss___ = __webpack_require__(18);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss____default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss___);
-/* unused harmony reexport namespace */
- /* unused harmony default export */ var _unused_webpack_default_export = (__WEBPACK_IMPORTED_MODULE_0__node_modules_style_loader_index_js_node_modules_css_loader_index_js_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_resolve_url_loader_index_js_node_modules_sass_loader_lib_loader_js_ref_2_3_node_modules_vue_loader_lib_index_js_vue_loader_options_vue_tabel_vue_vue_type_style_index_0_lang_scss____default.a); 
-
-/***/ }),
-/* 20 */
-/***/ (function(module, exports, __webpack_require__) {
-
-exports = module.exports = __webpack_require__(14)(false);
-// imports
-
-
-// module
-exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n}\n.vue-table .table {\n    font-family: 'Open Sans', sans-serif;\n    font-size: 12px;\n}\n.vue-table .table .header .column {\n      color: #fff;\n      background: #adaeb0;\n      font-weight: 700;\n      text-transform: uppercase;\n      overflow: visible;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-width: 0 0 1px 1px;\n      padding: .5em .6em .4em .6em;\n      cursor: pointer;\n}\n.vue-table .table .header .column .container {\n        display: flex;\n        flex-direction: row;\n        width: auto;\n        padding: 0px;\n}\n.vue-table .table .header .column .container .name {\n          flex-basis: 100%;\n}\n.vue-table .table .header .column .container .name .arrow {\n            color: #415090;\n            text-transform: lowercase;\n            margin: 0 0 0 3px;\n}\n.vue-table .table .header .column .container .filter {\n          font-size: 16px;\n}\n.vue-table .table .header .column .container .group {\n          font-size: 16px;\n          margin: 0 5px 0 0;\n}\n.vue-table .table .header .column .hint-container {\n        position: relative;\n        display: flex;\n        justify-content: center;\n        width: 100%;\n}\n.vue-table .table .header .column .hint-container .hint {\n          display: inline-block;\n          position: absolute;\n          top: 2px;\n          margin: 0 auto;\n          padding: 6px 5px 6px 5px;\n          width: auto;\n          background: #3349a7;\n          border-radius: 3px;\n          box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n          text-transform: none;\n          font-weight: 400;\n}\n.vue-table .table .body td {\n      line-height: 1em;\n      font-size: 11px;\n      padding: .4em .6em;\n      overflow: hidden;\n      vertical-align: middle;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 0 0 1px 1px;\n}\n.vue-table .table .body th {\n      background-color: #f2f2f2;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 1px 0 1px 1px;\n}\n.vue-table .table .footer th {\n      line-height: 1em;\n      font-size: 12px;\n      padding: .4em .6em;\n      overflow: hidden;\n      vertical-align: middle;\n      text-overflow: ellipsis;\n      border-style: solid;\n      border-color: #ccc;\n      border-width: 0 0 1px 1px;\n      background: #3349a7;\n      background-color: #f2f2f2;\n      font-weight: 700;\n}\n", ""]);
-
-// exports
 
 
 /***/ })
