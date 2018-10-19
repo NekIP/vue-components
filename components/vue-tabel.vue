@@ -48,16 +48,20 @@
 							<div class="container">
 
 								<div class="rol-up" @click="column.hidden ? showColumn(column, $event) : hideColumn(column, $event)">
-									<i  class="fa fa-caret-left" 
-										role="button"
-										aria-hidden="true"
-										:title="'Hide column \'' + column.name + '\''"
-										v-show="!column.hidden"></i>
-									<i  class="fa fa-caret-right" 
-										role="button"
-										aria-hidden="true"
-										:title="'Show column \'' + column.name + '\''"
-										v-show="column.hidden"></i>
+									<transition name="sort-ascending" mode="out-in">
+										<i  class="fa fa-caret-left" 
+											role="button"
+											aria-hidden="true"
+											:title="'Hide column \'' + column.name + '\''"
+											v-show="!column.hidden"></i>
+									</transition>
+									<transition name="sort-descending" mode="out-in">
+										<i  class="fa fa-caret-right" 
+											role="button"
+											aria-hidden="true"
+											:title="'Show column \'' + column.name + '\''"
+											v-show="column.hidden"></i>
+									</transition>
 								</div>
 
 								<div class="name hint hint--bottom hint--info"
@@ -600,6 +604,8 @@
 				font-family: 'Open Sans', sans-serif;
 				font-size: 12px;
 				margin-bottom: 0px;
+				border-right: 1px solid #77777750;
+				border-left: 1px solid #77777750;	
 
 				.header { 
 					.column {
@@ -612,6 +618,7 @@
 						border-style: solid;
 						border-width: 0 0 1px 1px;
 						padding: .5em .6em .4em .6em;
+						text-shadow: 1px 1px rgba(0,0,0,.14);
 						cursor: pointer;
 
 						.container {
