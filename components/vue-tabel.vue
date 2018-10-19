@@ -132,7 +132,8 @@
 						class="lighting-row">
 						<td v-for="column in columnsInfo"
 							v-if="!column.hidden || i == 0"
-							:rowspan="column.hidden ? page.size : 1">
+							:rowspan="column.hidden ? page.size : 1"
+							:class="column.hidden ? 'hidden-column' : ''">
 							<slot :name="column.id + '-column'" 
 								:value="item[column.id]"
 								v-if="!column.hidden">
@@ -798,6 +799,10 @@
 						td {
 							background-color: #ececec;
 						}
+					}
+
+					.hidden-column {
+						vertical-align: top;
 					}
 				}
 
