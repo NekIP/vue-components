@@ -5,10 +5,27 @@
 		<div class='group-area'
 			 @dragenter="columnDragEnter(groupAreaName, $event)"
 			 @dragend="columnDragEnd($event)">
-			<div v-for="groupingColumn in groupingColumns">
+			<div 	class="group-item"
+					v-for="groupingColumn in groupingColumns"
+					@click="sort(groupingColumn)">
+				<div class="sort-icon">
+					<span v-show="sorting.column === groupingColumn">
+						<transition name="sort-ascending" mode="out-in">
+							<i v-show="sorting.ascending" 
+								class="fa fa-arrow-up arrow" 
+								aria-hidden="true"></i>
+						</transition>
+						<transition name="sort-descending" mode="out-in">
+							<i v-show="!sorting.ascending" 
+								class="fa fa-arrow-down arrow" 
+								aria-hidden="true"></i>
+						</transition>
+					</span>
+				</div>
 				{{groupingColumn.name}}
-				<button @click="ungroup(groupingColumn)">X</button>
-				<button @click="sort(groupingColumn)">sort</button>
+				<div @click="ungroup(groupingColumn)" class="ungroup">
+					<i class="fa fa-times" aria-hidden="true"></i>
+				</div>
 			</div>
 			<template v-if="!hasGrouped">
 				Drag a column header and drop it here to group by that column
@@ -23,6 +40,7 @@
 						<th v-for="i in groupingColumns"></th>
 						<th v-for="column in columnsInfo">
 							<slot :name="column.id + '-footer'"
+								v-if="!column.hidden"
 								:cells="getCells(data, column.id)">
 							</slot>
 						</th>
@@ -652,7 +670,45 @@
 			line-height: 2;
 			margin: 0;
     		padding: .75em .2em .8333em 1em;
-   			cursor: default;
+			cursor: default;
+			display: flex;
+			flex-direction: row; 
+
+
+			.group-item {
+				display: flex;
+				flex-direction: row;
+				padding: 1px 5px;
+				color: white;
+				font-weight: 600;
+				margin-right: 10px;
+				background: #182768;
+				border-radius: 5px;
+				-ms-user-select: none;
+				-moz-user-select: none;
+				-khtml-user-select: none;
+				-webkit-user-select: none;
+				text-shadow: 1px 1px rgba(0,0,0,.14);
+				cursor: pointer;
+				
+				.ungroup {
+					color: rgba(200, 200, 200, 0.637);
+					margin: 4px 2px 0px 6px;
+					font-size: 14px;
+					cursor: pointer;
+
+					&:hover {
+						color: white;
+					}
+				}
+
+				.sort-icon {
+					width: 15px;
+					height: 15px;
+					margin-right: 5px;
+					padding: 4px 5px 0 2px;
+				}
+			}
 		}
 
 		.paging {
@@ -753,6 +809,7 @@
 			display: block;
 			overflow-x: auto;
 			white-space: nowrap;
+			background: rgba(236, 236, 236, 0.753);
 
 			.table {
 				table-layout: fixed;
@@ -944,9 +1001,10 @@
 
 					th {
 						background-color: #f2f2f2;
-						border-style: solid;
+						/*border-style: solid;
 						border-color: #ccc;
-						border-width: 1px 0 1px 1px;
+						border-width: 1px 0 1px 1px;*/
+						border-bottom: 1px solid #ccc;
 					}
 
 					.lighting-row:hover {
