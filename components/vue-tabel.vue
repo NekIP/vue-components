@@ -173,17 +173,67 @@
 				</tbody>
 			</table>
 		</div>
-		<div class="col-sm-12">
-			<button @click="firstPage()">--</button>
-			<button @click="prevPage()">-</button>
-			<template v-for="(item, i) in new Array(pageCount)">
-				{{i + 1 == page.number ? ('>' + (i + 1) + '<') : (i + 1)}}
-			</template>
-			<button @click="nextPage()">></button>
-			<button @click="lastPage()">>></button>
-			<select v-model="page.size">
-				<option v-for="size in pageSizes" :value="size">{{size == 0 ? 'all' : size}}</option>
+		<div class="paging">
+			<button class="paging-button"
+					@click="firstPage()" 
+					:disabled="page.number === 1">
+				<i class="fa fa-step-backward" aria-hidden="true"></i>
+			</button>
+			<button class="paging-button" 
+					@click="prevPage()"  
+					:disabled="page.number === 1">
+				<i class="fa fa-caret-left" aria-hidden="true"></i>
+			</button>
+			<div class="paging-row">
+				<button class="paging-button" 
+						v-if="page.number > maxCountOfPage"
+						@click="goToPage(Math.floor((page.number - 1) / maxCountOfPage) * maxCountOfPage)">
+					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+				</button>
+				<template v-for="(item, i) in new Array(pageCount)">
+					<template v-if="canShowPageNumber(i)">
+						<button class="paging-button" 
+								:class="i + 1 == page.number ? 'selected' : ''"
+								@click="goToPage(i + 1)">
+							{{i + 1}}
+						</button>
+					</template>
+				</template>
+				<button class="paging-button" 
+						v-if="pageCount != maxCountOfPage && page.number <= Math.floor(pageCount / maxCountOfPage) * maxCountOfPage"
+						@click="goToPage(Math.floor((page.number - 1) / maxCountOfPage) * maxCountOfPage + maxCountOfPage + 1)">
+					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+				</button>
+			</div>
+			<button class="paging-button" 
+					@click="nextPage()"
+					:disabled="page.number === pageCount">
+				<i class="fa fa-caret-right" aria-hidden="true"></i>
+			</button>
+			<button class="paging-button"
+					@click="lastPage()"
+					:disabled="page.number === pageCount">
+				<i class="fa fa-step-forward" aria-hidden="true"></i>
+			</button>
+			<select v-model="page.size"
+					class="paging-select">
+				<option v-for="size in pageSizes" 
+						:value="size">
+					{{size == 0 ? 'All' : size}}
+				</option>
 			</select>
+			<div class="paging-select-hint">
+				items per page
+			</div>
+			<div class="paging-info">
+				{{(page.number - 1) * page.size + 1}} - 
+				{{ page.size == 0 || page.number * page.size > data.length 
+					? data.length
+					: page.number * page.size }} 
+				of 
+				{{data.length}} 
+				items
+			</div>
 		</div>
 	</div>
 </template>
@@ -228,6 +278,7 @@
 				},
 				minWidthBias: 100,
 				hiddenColumnSize: 20,
+				maxCountOfPage: 5,
 				hints: {}	// show hint
 				/*columnsCash: null*/
 			}
@@ -257,7 +308,7 @@
 						}
 					}
 					if (!result[key]) {
-						result[key] = []
+						result[key] = [];
 					}
 					result[key].push(item);
 				}
@@ -379,6 +430,12 @@
 
 			firstPage() {
 				this.page.number = 1;
+			},
+
+			goToPage(i) {
+				if (i > 0 && i <= this.pageCount) {
+					this.page.number = i;
+				}
 			},
 
 			columnDragStart(column, event) {
@@ -512,7 +569,6 @@
 				this.resizable.column = column;
 				this.resizable.column.width = columnElement.offsetWidth;
 				this.resizable.mousePositionX = event.clientX;
-				console.log(this.resizable.mousePositionX);
 			},
 
 			resizeColumn(event) {
@@ -541,7 +597,6 @@
 							? b.width || b.name.length * 18 + 50
 							: self.hiddenColumnSize), 
 					0);
-				console.log(result);
 				return result;
 			},
 
@@ -554,6 +609,11 @@
 				column.hidden = false;
 				this.$forceUpdate();
 			},
+
+			canShowPageNumber(i) {
+				let num = Math.floor((this.page.number - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+				return i >= num && i < num + this.maxCountOfPage;
+			}
 		}
 	}
 </script>
@@ -595,6 +655,100 @@
    			cursor: default;
 		}
 
+		.paging {
+			padding-top: 3px;
+			width: 100%;
+			height: 40px;
+			color: #444;
+			padding-left: 20px;
+			background-color: #fafafa;
+			border-radius: 0 0 3px 3px;
+			border-color: #e6e6e6;
+			-webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
+			box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
+			line-height: 2.3em;
+			border-width: 1px;
+			white-space: normal;
+			clear: both;
+			overflow: hidden;
+			border-style: solid;
+			display: flex;
+			flex-direction: row;
+
+			.paging-select {
+				height: 29px;
+				border-width: 0px;
+				border-top: 1px solid #3348a700;
+				border-left: 1px solid #86868691;
+				padding-left: 15px;
+				border-radius: 0px 0px 3px 3px;
+				background: rgba(255, 255, 255, 0);
+				font-size: 15px;
+				flex-grow: 0;
+
+				&:hover {
+					background: rgba(233, 233, 233, 0.555);
+				}
+
+				&:focus {
+					outline: 0;
+					background: rgb(255, 255, 255);
+				}
+
+				option:hover {
+					background: red;
+					color: rgb(255, 255, 255);
+				}
+			}
+
+			.paging-button {
+				width: 29px;
+				height: 29px;
+				border-width: 0px;
+				border-top: 1px solid #3348a700;
+				border-radius: 0px 0px 3px 3px;
+				background: rgba(255, 255, 255, 0);
+				-webkit-box-shadow: none;
+				box-shadow: none;
+				flex-grow: 0;
+
+				&.selected {
+					border-top: 1px solid #3349a7;
+					background: rgba(233, 233, 233, 0.555);
+				}
+
+				&:hover {
+					background: rgba(233, 233, 233, 0.555);
+				}
+
+				&:disabled,
+				&[disabled] {
+					color: #c7c7c7;
+				}
+
+				&:focus {
+					outline:0;
+				}
+			}
+
+			.paging-select-hint {
+				padding-top: 1px;
+				font-size: 14px;
+				font-weight: 400;
+				color: #666666;
+				flex-grow: 1;
+			}
+
+			.paging-info {
+				padding-top: 1px;
+				padding-right: 30px;
+				font-size: 12px;
+				font-weight: 400;
+				color: #9b9b9b;
+				flex-grow: 0;
+			}
+		}
+
 		.table-container {
 			display: block;
 			overflow-x: auto;
@@ -631,10 +785,10 @@
 							.rol-up {
 								padding: 0 5px 0 0;
 								font-size: 15px;
-							}
 
-							.rol-up:hover {
-								color: #415090;
+								&:hover {
+									color: #415090;
+								}
 							}
 
 							.name {
