@@ -40,7 +40,7 @@ var app = new Vue({
             },
         ],
         columns: [
-            { id: 'mid', name: 'Merchant Id' },
+            { id: 'mid', name: 'Merchant Id', type: 'number' },
             { id: 'date', type: 'date' },
             { id: 'purchaseId', type: 'number' },
             { id: 'transactionId', type: 'number' },

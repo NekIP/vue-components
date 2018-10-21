@@ -11,12 +11,12 @@
 				<div class="sort-icon">
 					<span v-show="sorting.column === groupingColumn">
 						<transition name="sort-ascending" mode="out-in">
-							<i v-show="sorting.ascending" 
+							<i 	v-show="sorting.ascending" 
 								class="fa fa-arrow-up arrow" 
 								aria-hidden="true"></i>
 						</transition>
 						<transition name="sort-descending" mode="out-in">
-							<i v-show="!sorting.ascending" 
+							<i	v-show="!sorting.ascending" 
 								class="fa fa-arrow-down arrow" 
 								aria-hidden="true"></i>
 						</transition>
@@ -125,6 +125,20 @@
 										:title="'Filter \'' + column.name + '\''"></i>
 								</div>
 
+								<div class="filter-container">
+									<div class="filter-window">
+										<select @input="selectFilter(column, $event.target.value)">
+											<option v-for="(filteringMode, filteringModeName) in filteringModes" 
+													v-if="filteringMode.type == 'all' || filteringMode.type == column.type"
+													:value="filteringModeName">
+												{{filteringModeName}}
+											</option>
+										</select>
+										<input @input="selectValueForFilter(column, $event.target.value)"></input>
+										<button @click="clearFilter(column)">Clear</button>
+									</div>
+								</div>
+
 								<div 	class="mover-container"
 										v-if="!column.hidden">
 									<div class="mover"
@@ -144,7 +158,7 @@
 
 				<tbody class="body">
 
-					<tr v-if="!hasGrouped" 
+					<tr v-if="!hasGrouped && filter(item)" 
 						v-for="(item, i) in getItemsOnCurrentPage()"
 						:key="item"
 						class="lighting-row">
@@ -174,6 +188,7 @@
 							</th>
 						</tr>
 						<tr v-for="(item, i) in items"
+							v-if="filter(item)"
 							class="lighting-row">
 							<template v-if="i === 0">
 								<th :rowspan="items.length" v-for="i in groupingColumns"></th>
@@ -278,6 +293,68 @@
 					id: '',
 					mode: 'eq'
 				},
+				filteringModes: {
+					'Is equal to': {
+						type: 'all', 
+						handler: (curr, exp) => curr === exp 
+					},
+					"Is not equal to": { 
+						type: 'all', 
+						handler: (curr, exp) => curr === exp 
+					},
+					'Is null': { 
+						type: 'all', 
+						handler: (curr, exp) => curr === null, 
+						single: true 
+					},
+					'Is not null': { 
+						type: 'all', 
+						handler: (curr, exp) => curr !== null, 
+						single: true 
+					},
+					'Is greater than or equal to': { 
+						type: 'number', 
+						handler: (curr, exp) => +curr >= +exp 
+					},
+					'Is greater than': { 
+						type: 'number', 
+						handler: (curr, exp) => +curr > +exp 
+					},
+					'Is less than or equal to': { 
+						type: 'number',
+						handler: (curr, exp) => +curr <= +exp 
+					},
+					'Is less than': { 
+						type: 'number', 
+						handler: (curr, exp) => +curr < +exp 
+					},
+					'Starts with': { 
+						type: 'string', 
+						handler: (curr, exp) => curr.startsWith(exp) 
+					},
+					'Ends with': { 
+						type: 'string', 
+						handler: (curr, exp) => curr.endsWith(exp) 
+					},
+					'Contains': { 
+						type: 'string', 
+						handler: (curr, exp) => curr.includes(exp) 
+					},
+					'Does not contain': { 
+						type: 'string', 
+						handler: (curr, exp) => !curr.includes(exp) 
+					},
+					'Is empty': { 
+						type: 'string', 
+						handler: (curr, exp) => curr === "", 
+						single: true 
+					},
+					'Is not empty': {
+						type: 'string', 
+						handler: (curr, exp) => curr !== "", 
+						single: true 
+					},
+				},
 				groupingColumns: [],
 				page: {
 					size: this.pageSizes[0],
@@ -287,7 +364,7 @@
 					dragable: null,
 					dropable: null
 				},
-				columnsInfo: this.getColumnsInfo(),
+				columnsInfo: null,
 				groupAreaName: '*group-area*',
 				groupDelimeterChar: ';',
 				resizable: {
@@ -300,6 +377,9 @@
 				hints: {}	// show hint
 				/*columnsCash: null*/
 			}
+		},
+		created () {
+			this.columnsInfo = this.getColumnsInfo();
 		},
 		computed: {
 			pageCount() {
@@ -339,38 +419,39 @@
 		methods: {
 			getColumnsInfo() {
 				const defaultType = 'string';
+				let self = this;
 				return this.columns.map(x => {
 					switch (typeof(x)) {
 						case 'string':
 							return {
 								id: x,
-								name: this.getReadableName(x),
+								name: self.getReadableName(x),
 								type: defaultType,
-								sortable: this.sortable || false,
-								filtrable: this.filtrable || false,
-								groupable: this.groupable || false,
+								sortable: self.sortable || false,
+								filtrable: self.filtrable || false,
+								groupable: self.groupable || false,
 								width: undefined
 							}
 						case 'object':
 							if (Array.isArray(x)){
 								return {
 									id: x[0],
-									name: x[1] || this.getReadableName(x[0]),
+									name: x[1] || self.getReadableName(x[0]),
 									type: x[2] || defaultType,
-									sortable: this.sortable || false,
-									filtrable: this.filtrable || false,
-									groupable: this.groupable || false,
+									sortable: self.sortable || false,
+									filtrable: self.filtrable || false,
+									groupable: self.groupable || false,
 									width: undefined
 								}
 							}
 							else {
 								return {
 									id: x.id,
-									name: x.name || this.getReadableName(x.id),
+									name: x.name || self.getReadableName(x.id),
 									type: x.type || defaultType,
-									sortable: x.sortable ||  this.sortable || false,
-									filtrable: x.filtrable ||  this.filtrable || false,
-									groupable: x.groupable || this.groupable || false,
+									sortable: x.sortable ||  self.sortable || false,
+									filtrable: x.filtrable ||  self.filtrable || false,
+									groupable: x.groupable || self.groupable || false,
 									width: x.width
 								}
 							}
@@ -631,6 +712,44 @@
 			canShowPageNumber(i) {
 				let num = Math.floor((this.page.number - 1) / this.maxCountOfPage) * this.maxCountOfPage;
 				return i >= num && i < num + this.maxCountOfPage;
+			},
+
+			selectFilter(column, mode) {
+				column.filter = this.filteringModes[mode];
+				if (column.filter.single || column.filtrableValue) {
+					this.$forceUpdate();
+				}
+			},
+
+			selectValueForFilter(column, filtrableValue) {
+				if (column.filter) {
+					column.filtrableValue = filtrableValue;
+					this.forceUpdate();
+				}
+			},
+
+			forceUpdate() {
+				this.$forceUpdate();
+			},
+
+			filter(item) {
+				for (let i = 0; i < this.columnsInfo.length; i++) {
+					let column = this.columnsInfo[i];
+					if (column.filter) {
+						if (column.filter.handler) {
+							return column.filter.handler(
+								this.getTypedValue(item[column.id], column.type), 
+								this.getTypedValue(column.filtrableValue, column.type));	
+						}
+					}
+				}
+				return true;
+			},
+
+			clearFilter(column) {
+				column.filter = null;
+				column.filtrableValue = null;
+				this.forceUpdate();
 			}
 		}
 	}
@@ -810,6 +929,7 @@
 			overflow-x: auto;
 			white-space: nowrap;
 			background: rgba(236, 236, 236, 0.753);
+			min-height: 200px;
 
 			.table {
 				table-layout: fixed;
@@ -860,10 +980,27 @@
 
 							.filter {
 								font-size: 16px;
+
+								&:hover {
+									color: #415090;
+								}
 							}
 
-							.filter:hover {
-								color: #415090;
+							.filter-container {
+								position: relative;
+								color: black;
+								font-weight: 200;
+								text-shadow: none;
+
+								.filter-window {
+									position: absolute;
+									padding: 10px;
+									background: white;
+									box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);
+									border-radius: 0 0 5px 5px;
+									top: 22px;
+									left: -30px;
+								}
 							}
 
 							.group {
