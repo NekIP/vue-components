@@ -283,7 +283,7 @@
 				default: [25, 50, 100, 0]
 			}
 		},
-		data: function () {
+		data() {
 			return {
 				sorting: {
 					column: null,
