@@ -36,6 +36,17 @@
 	</head>
 	<body>
 		<div id='app'>
+			<vue-select 
+				default-title="Merchants" 
+				multiple-selected-title-chunk="Accounts"
+				:allow-multiple="true"
+				:all-option-groups="allOptionGroups" 
+				@selection-changed="console.log($event)">
+				<span slot="header" slot-scope="{ selectedIds }"> 
+					{{ (selectedIds.length == 1) ? selectedIds[0] : `count: ${selectedIds.length}`}}
+				</span>
+			</vue-select>
+
 			<vue-table 
 				:data="data"
 				:columns="columns"

@@ -1,7 +1,9 @@
 import customTable from './components/vue-tabel.vue'
+import vueSelect from './components/vue-select.vue'
 
 (function () {
     Vue.component('vue-table', customTable); 
+    Vue.component('vueSelect', vueSelect);
 })();
 
 var app = new Vue({
@@ -48,6 +50,68 @@ var app = new Vue({
             'currency',
             ['amount', 'Value', 'number'],
             'url'
+        ],
+        allOptionGroups: [
+            {
+                groupHeader: "Merchants first group",
+                groupItems: [
+                    {
+                        text: "20006 - DM Network LTD",
+                        value: 20006,
+                        isSelected: false,
+                    },
+                    {
+                        text: "20007 - Quiston Limited",
+                        value: 20007,
+                        isSelected: false
+                    },
+                    {
+                        text: "20008 - SpaZar Productions",
+                        value: 20008,
+                        isSelected: false
+                    },
+                    {
+                        text: "20009 - Leadcon Ventures Ltd",
+                        value: 20009,
+                        isSelected: false
+                    },
+                    {
+                        text: "20010 - Schoppmann",
+                        value: 67890,
+                        isSelected: false
+                    },
+                    {
+                        text: "20011 - Green District Online",
+                        value: 20011,
+                        isSelected: false
+                    },
+                    {
+                        text: "20012 - Navesink House Ltd",
+                        value: 20012,
+                        isSelected: false
+                    },
+                    {
+                        text: "20013 - Hampton Trading (UK) Ltd.",
+                        value: 20013,
+                        isSelected: false
+                    },
+                    {
+                        text: "20014 - Geocomscalth",
+                        value: 20014,
+                        isSelected: false
+                    },
+                    {
+                        text: "20015 - Alcrodant Ltd",
+                        value: 20015,
+                        isSelected: false
+                    },
+                    {
+                        text: "20016 - Carson Investments and Finance",
+                        value: 20016,
+                        isSelected: false
+                    }   
+                ]
+            }             
         ]
     },
     created: function() {
