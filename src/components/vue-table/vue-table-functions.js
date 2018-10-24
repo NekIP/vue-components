@@ -13,32 +13,114 @@ export function getReadableName(name) {
 	return result;
 }
 
+export function indexOfItemInArray(array, item, selector) {
+	let result = -1;
+	for (let i = 0; i < array.length; i++) {
+		if (selector(array[i]) === item) {
+			result = i;
+			break;
+		}
+	}
+	return result;
+}
+
+export function removeItemInArray(array, item, selector) {
+	let indexOfItem = indexOfItemInArray(array, item, selector);
+	if (indexOfItem !== -1) {
+		array.splice(indexOfItem, 1);
+	}
+}
+
+export function itemExistInArray(array, item, selector) {
+	let indexOfItem = indexOfItemInArray(array, item, selector);
+	if (indexOfItem !== -1) {
+		return false;
+	}
+	return true;
+}
+
+export function getColumns( columns, 
+							sortable, 
+							filtrable, 
+							groupable, 
+							resizable, 
+							movable,
+							hidable) {
+	const defaultType = 'string';
+	return columns.map(x => {
+		switch (typeof(x)) {
+			case 'string':
+				return {
+					id: x,
+					name: getReadableName(x),
+					type: defaultType,
+					sortable: sortable || false,
+					filtrable: filtrable || false,
+					groupable: groupable || false,
+					resizable: resizable || false,
+					movable: movable || false,
+					hidable: hidable || false,
+					width: undefined
+				}
+			case 'object':
+				if (Array.isArray(x)){
+					return {
+						id: x[0],
+						name: x[1] || getReadableName(x[0]),
+						type: x[2] || defaultType,
+						sortable: sortable || false,
+						filtrable: filtrable || false,
+						groupable: groupable || false,
+						resizable: resizable || false,
+						movable: movable || false,
+						hidable: hidable || false,
+						width: undefined
+					}
+				}
+				else {
+					return {
+						id: x.id,
+						name: x.name || getReadableName(x.id),
+						type: x.type || defaultType,
+						sortable: x.sortable ||  sortable || false,
+						filtrable: x.filtrable ||  filtrable || false,
+						groupable: x.groupable || groupable || false,
+						resizable: x.resizable || resizable || false,
+						movable: x.movable || movable || false,
+						hidable: x.hidable || hidable || false,
+						width: x.width
+					}
+				}
+		}
+	})
+}
+
 export function getTypedValue(value, type) {
 	switch (type) {
-		case VueTableColumnType.date:
+		case 'date':
 			/* TODO: use moment.js */
 			return Date.parse(value);
-		case VueTableColumnType.string:
+		case 'string':
 			return value;
-		case VueTableColumnType.number:
+		case 'number':
 			return +value;
-		case VueTableColumnType.boolean:
+		case 'boolean':
 			return !!value;
 	}
 }
 
 export function sort(data, state) {
-	function sortComparer(item1, item2, sorting) {
+	function sortComparer(item1, item2, sortingColumns) {
 		let result = 0;
-		for (let i = 0; i < sorting.length; i++) {
-			let sortingItem = sorting[i];
-			let [a, b] = [item1[sortingItem.column.id], item2[sortingItem.column.id]];
-			result = result || this.compare(
-				getTypedValue(a, sortingItem.column.type), 
-				getTypedValue(b, sortingItem.column.type), 
-				sortingItem.direction ? 1 : -1);
+		for (let i = 0; i < sortingColumns.length; i++) {
+			let sortingColumn = sortingColumns[i];
+			let [a, b] = [item1[sortingColumn.id], item2[sortingColumn.id]];
+			result = result || compare(
+				getTypedValue(a, sortingColumn.type), 
+				getTypedValue(b, sortingColumn.type), 
+				sortingColumn.sortingDirection);
 		}
-		return 0;
+		return result;
 	}
 
 	function compare(a, b, direction) {
@@ -50,20 +132,19 @@ export function sort(data, state) {
 	}
 
 	if (state.sortable) {
-		if (state.sorting && state.sorting.length > 0) {
-			let sortComparer = this.sortComparer;
-			data.items.sort((item1, item2) => sortComparer(item1, item2, state.sorting));
+		if (state.sortingColumns && state.sortingColumns.length > 0) {
+			data.items.sort((item1, item2) => sortComparer(item1, item2, state.sortingColumns));
 		}
 	}
 }
 
 export function filter(data, state) {
 	if (state.filtrable) {
-		if (state.filtering && state.filtering.length > 0) {
+		if (state.filteringColumns && state.filteringColumns.length > 0) {
 			data.items = data.items.filter(value => {
 				let result = true;
-				for (let i = 0; i < state.filtering.length; i++) {
-					let filteringItem = state.filtering[i];
+				for (let i = 0; i < state.filteringColumns.length; i++) {
+					let filteringItem = state.filteringColumns[i];
 					result = result && 
 						filteringItem
 							.filter
@@ -77,12 +158,12 @@ export function filter(data, state) {
 
 export function group(data, state) {
 	if (state.groupable) {
-		if (state.grouping && state.grouping.length > 0) {
+		if (state.groupingColumns && state.groupingColumns.length > 0) {
 			for (let i = 0; i < data.items.length; i++) {
 				let item = data.items[i];
 				let valueOfGroupingFields = [];
-				for (let j = 0; j < state.grouping.length; j++) {
-					let groupingColumn = state.grouping[j];
+				for (let j = 0; j < state.groupingColumns.length; j++) {
+					let groupingColumn = state.groupingColumns[j];
 					let value = item[groupingColumn.id];
 					valueOfGroupingFields.push(value);
 				}

@@ -97,9 +97,9 @@ Object.defineProperty(exports, "__esModule", {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var _vueTableFunctions = __webpack_require__(25);
+var _vueTableFunctions = __webpack_require__(18);
 
-var _vueTableData = __webpack_require__(26);
+var _vueTableData = __webpack_require__(19);
 
 exports.default = {
 	name: 'report-table',
@@ -142,6 +142,11 @@ exports.default = {
 			default: true,
 			required: false
 		},
+		hidable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
 		pageSizes: {
 			type: Array,
 			default: [25, 50, 100, 0],
@@ -151,17 +156,26 @@ exports.default = {
 	data: function data() {
 		return {
 			state: {
+				columns: [],
+
 				sortable: this.sortable,
-				sorting: [], /* { column: , direction: } */
+				sortingColumns: [], /* { column: , direction: } */
+
 				filtrable: this.filtrable,
-				filtering: [], /* { column: , filter: , expected: } */
+				filteringColumns: [], /* { column: , filter: , expected: } */
+
 				groupable: this.groupable,
-				grouping: [], /* column */
+				groupingColumns: [],
+
+				hidable: this.hidable,
+				hidingColumns: [],
+
 				movable: this.movable,
 				moving: {
 					dragable: null,
 					dropable: null
 				},
+
 				resizable: this.resizable,
 				resizing: {
 					column: null,
@@ -170,18 +184,17 @@ exports.default = {
 						y: null
 					}
 				},
+
 				pageable: this.pageable,
 				paging: {
 					size: this.pageSizes[0],
+					count: this.countPage(this.pageSizes[0]),
 					current: 1
-				}
+				},
+
+				recalculate: 1
 			},
-			gates: {
-				filter: _vueTableFunctions.filter,
-				sort: _vueTableFunctions.sort,
-				group: _vueTableFunctions.group,
-				page: _vueTableFunctions.page
-			},
+			gates: [_vueTableFunctions.filter, _vueTableFunctions.sort, _vueTableFunctions.group, _vueTableFunctions.page],
 			sorting: {
 				column: null,
 				ascending: false
@@ -305,8 +318,17 @@ exports.default = {
 	},
 	created: function created() {
 		this.columnsInfo = this.getColumnsInfo();
+		this.state.columns = (0, _vueTableFunctions.getColumns)(this.columns, this.sortable, this.filtrable, this.groupable, this.resizable, this.movable, this.hidable);
 	},
 
+	watch: {
+		'state.paging.size': function statePagingSize(size) {
+			this.state.paging.count = this.countPage(size);
+			if (this.state.paging.current > this.state.paging.count) {
+				this.state.paging.current = this.state.paging.count;
+			}
+		}
+	},
 	computed: {
 		pageCount: function pageCount() {
 			if (this.page.size == 0) {
@@ -340,12 +362,13 @@ exports.default = {
 		hasGrouped: function hasGrouped() {
 			return this.groupingColumns && this.groupingColumns.length > 0;
 		},
-		rows: function rows() {
+		data: function data() {
+			var recalulate = this.state.recalculate;
 			var result = {
 				items: this.items,
 				paging: null
 			};
-			for (var i = 0; i < this.gates; i++) {
+			for (var i = 0; i < this.gates.length; i++) {
 				var gate = this.gates[i];
 				gate(result, this.state);
 			}
@@ -353,6 +376,57 @@ exports.default = {
 		}
 	},
 	methods: {
+		sortByMany: function sortByMany(column) {
+			if (!column.sortingDirection) {
+				column.sortingDirection = 1;
+				this.state.sortingColumns.push(column);
+			} else {
+				column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
+				this.forceUpdate();
+			}
+		},
+		sortByOne: function sortByOne(column) {
+			if (!column.sortingDirection) {
+				for (var i = this.state.sortingColumns.length - 1; i >= 0; i--) {
+					this.removeColumnForSorting(this.state.sortingColumns[i]);
+				}
+			}
+			this.sortByMany(column);
+		},
+		removeColumnForSorting: function removeColumnForSorting(column) {
+			column.sortingDirection = undefined;
+			(0, _vueTableFunctions.removeItemInArray)(this.state.sortingColumns, column, function (x) {
+				return x;
+			});
+		},
+		addColumForGrouping: function addColumForGrouping(column) {
+			column.grouping = true;
+			this.state.grouping.push(column);
+		},
+		removeColumForGrouping: function removeColumForGrouping(column) {
+			column.grouping = false;
+			(0, _vueTableFunctions.removeItemInArray)(this.state.grouping, column);
+		},
+		addColumForFiltering: function addColumForFiltering(column, filter) {
+			column.filtering = filter;
+			this.state.filtering.push(column);
+		},
+		removeColumForFiltering: function removeColumForFiltering(column) {
+			column.filtering = undefined;
+			(0, _vueTableFunctions.removeItemInArray)(this.state.filtering, column);
+		},
+		goToPage: function goToPage(i) {
+			if (i > 0 && i <= this.state.paging.count) {
+				this.state.paging.current = i;
+			}
+		},
+		canShowPageNumber: function canShowPageNumber(i) {
+			var num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+			return i >= num && i < num + this.maxCountOfPage;
+		},
+		countPage: function countPage(size) {
+			return size == 0 ? 1 : Math.ceil(this.items.length / size);
+		},
 		getColumnsInfo: function getColumnsInfo() {
 			var defaultType = 'string';
 			var self = this;
@@ -444,11 +518,6 @@ exports.default = {
 		firstPage: function firstPage() {
 			this.page.number = 1;
 		},
-		goToPage: function goToPage(i) {
-			if (i > 0 && i <= this.pageCount) {
-				this.page.number = i;
-			}
-		},
 		columnDragStart: function columnDragStart(column, event) {
 			if (!this.resizable.column) {
 				this.movableColumn.dragable = column;
@@ -483,22 +552,6 @@ exports.default = {
 			} else {
 				event.preventDefault();
 			}
-		},
-		sort: function sort(column, group) {
-			var direction = this.sorting.column == column ? this.sorting.ascending ? -1 : 1 : 1;
-			var getTypedValue = this.getTypedValue;
-			var sortFunction = function sortFunction(x, y) {
-				return getTypedValue(x[column.id], column.type) > getTypedValue(y[column.id], column.type) ? direction : getTypedValue(x[column.id], column.type) < getTypedValue(y[column.id], column.type) ? -direction : 0;
-			};
-			if (!group) {
-				this.items.sort(sortFunction);
-			} else {
-				for (var i in this.groupedData) {
-					this.groupedData[i].sort(sortFunction);
-				}
-			}
-			this.sorting.column = column;
-			this.sorting.ascending = direction == 1 ? true : false;
 		},
 		group: function group(column) {
 			if (this.groupingColumns.indexOf(column) == -1) {
@@ -588,10 +641,6 @@ exports.default = {
 			column.hidden = false;
 			this.$forceUpdate();
 		},
-		canShowPageNumber: function canShowPageNumber(i) {
-			var num = Math.floor((this.page.number - 1) / this.maxCountOfPage) * this.maxCountOfPage;
-			return i >= num && i < num + this.maxCountOfPage;
-		},
 		selectFilter: function selectFilter(column, mode) {
 			column.filter = this.filteringModes[mode];
 			if (column.filter.single || column.filtrableValue) {
@@ -605,6 +654,7 @@ exports.default = {
 			}
 		},
 		forceUpdate: function forceUpdate() {
+			this.state.recalculate = -this.state.recalculate;
 			this.$forceUpdate();
 		},
 		filter: function filter(item) {
@@ -637,7 +687,7 @@ Object.defineProperty(exports, "__esModule", {
 	value: true
 });
 
-var _fuse = __webpack_require__(21);
+var _fuse = __webpack_require__(23);
 
 var _fuse2 = _interopRequireDefault(_fuse);
 
@@ -1096,9 +1146,7 @@ var render = function() {
                     1
                   )
                 ]),
-                _vm._v(
-                  "\r\n\t\t\t" + _vm._s(groupingColumn.name) + "\r\n\t\t\t"
-                ),
+                _vm._v("\n\t\t\t" + _vm._s(groupingColumn.name) + "\n\t\t\t"),
                 _c(
                   "div",
                   {
@@ -1123,7 +1171,7 @@ var render = function() {
           !_vm.hasGrouped
             ? [
                 _vm._v(
-                  "\r\n\t\t\tDrag a column header and drop it here to group by that column\r\n\t\t"
+                  "\n\t\t\tDrag a column header and drop it here to group by that column\n\t\t"
                 )
               ]
             : _vm._e()
@@ -1140,11 +1188,11 @@ var render = function() {
               _c(
                 "tr",
                 [
-                  _vm._l(_vm.groupingColumns, function(i) {
+                  _vm._l(_vm.state.grouping, function(i) {
                     return _c("th")
                   }),
                   _vm._v(" "),
-                  _vm._l(_vm.columnsInfo, function(column) {
+                  _vm._l(_vm.state.columns, function(column) {
                     return _c(
                       "th",
                       [
@@ -1166,17 +1214,19 @@ var render = function() {
               _c(
                 "tr",
                 [
-                  _vm._l(_vm.groupingColumns, function(i) {
+                  _vm._l(_vm.groupingColumns, function(trash, j) {
                     return _c("th", {
+                      key: j,
                       staticClass: "column",
                       style: { width: 30 }
                     })
                   }),
                   _vm._v(" "),
-                  _vm._l(_vm.columnsInfo, function(column) {
+                  _vm._l(_vm.state.columns, function(column) {
                     return _c(
                       "th",
                       {
+                        key: column.id,
                         staticClass: "column",
                         style: {
                           "min-width":
@@ -1200,120 +1250,23 @@ var render = function() {
                         }
                       },
                       [
-                        _c("div", { staticClass: "container" }, [
-                          _c(
-                            "div",
-                            {
-                              staticClass: "rol-up",
-                              on: {
-                                click: function($event) {
-                                  column.hidden
-                                    ? _vm.showColumn(column, $event)
-                                    : _vm.hideColumn(column, $event)
-                                }
-                              }
-                            },
-                            [
-                              _c(
-                                "transition",
-                                {
-                                  attrs: {
-                                    name: "sort-ascending",
-                                    mode: "out-in"
-                                  }
-                                },
-                                [
-                                  _c("i", {
-                                    directives: [
-                                      {
-                                        name: "show",
-                                        rawName: "v-show",
-                                        value: !column.hidden,
-                                        expression: "!column.hidden"
-                                      }
-                                    ],
-                                    staticClass: "fa fa-caret-left",
-                                    attrs: {
-                                      role: "button",
-                                      "aria-hidden": "true",
-                                      title: "Hide column '" + column.name + "'"
-                                    }
-                                  })
-                                ]
-                              ),
-                              _vm._v(" "),
-                              _c(
-                                "transition",
-                                {
-                                  attrs: {
-                                    name: "sort-descending",
-                                    mode: "out-in"
-                                  }
-                                },
-                                [
-                                  _c("i", {
-                                    directives: [
-                                      {
-                                        name: "show",
-                                        rawName: "v-show",
-                                        value: column.hidden,
-                                        expression: "column.hidden"
-                                      }
-                                    ],
-                                    staticClass: "fa fa-caret-right",
-                                    attrs: {
-                                      role: "button",
-                                      "aria-hidden": "true",
-                                      title: "Show column '" + column.name + "'"
-                                    }
-                                  })
-                                ]
-                              )
-                            ],
-                            1
-                          ),
-                          _vm._v(" "),
-                          !column.hidden
-                            ? _c(
-                                "div",
-                                {
-                                  staticClass:
-                                    "name hint hint--bottom hint--info",
-                                  style: { width: _vm.getMinWidth(column) },
-                                  attrs: { "data-hint": column.name },
-                                  on: {
-                                    click: function($event) {
-                                      _vm.sort(column, _vm.hasGrouped)
-                                    }
-                                  }
-                                },
-                                [
-                                  _vm._t(
-                                    column.id + "-header",
-                                    [
-                                      _vm._v(
-                                        "\r\n\t\t\t\t\t\t\t\t\t" +
-                                          _vm._s(column.name) +
-                                          "\r\n\t\t\t\t\t\t\t\t"
-                                      )
-                                    ],
-                                    {
-                                      cells: _vm.getCells(_vm.items, column.id)
-                                    }
-                                  ),
-                                  _vm._v(" "),
+                        _c(
+                          "div",
+                          { staticClass: "container" },
+                          [
+                            _vm.state.hidable
+                              ? [
                                   _c(
-                                    "span",
+                                    "div",
                                     {
-                                      directives: [
-                                        {
-                                          name: "show",
-                                          rawName: "v-show",
-                                          value: _vm.sorting.column === column,
-                                          expression:
-                                            "sorting.column === column"
+                                      staticClass: "rol-up",
+                                      on: {
+                                        click: function($event) {
+                                          column.hidden
+                                            ? _vm.showColumn(column, $event)
+                                            : _vm.hideColumn(column, $event)
                                         }
-                                      ]
+                                      }
                                     },
                                     [
                                       _c(
@@ -1330,12 +1283,19 @@ var render = function() {
                                               {
                                                 name: "show",
                                                 rawName: "v-show",
-                                                value: _vm.sorting.ascending,
-                                                expression: "sorting.ascending"
+                                                value: !column.hidden,
+                                                expression: "!column.hidden"
                                               }
                                             ],
-                                            staticClass: "fa fa-arrow-up arrow",
-                                            attrs: { "aria-hidden": "true" }
+                                            staticClass: "fa fa-caret-left",
+                                            attrs: {
+                                              role: "button",
+                                              "aria-hidden": "true",
+                                              title:
+                                                "Hide column '" +
+                                                column.name +
+                                                "'"
+                                            }
                                           })
                                         ]
                                       ),
@@ -1354,170 +1314,350 @@ var render = function() {
                                               {
                                                 name: "show",
                                                 rawName: "v-show",
-                                                value: !_vm.sorting.ascending,
-                                                expression: "!sorting.ascending"
+                                                value: column.hidden,
+                                                expression: "column.hidden"
                                               }
                                             ],
-                                            staticClass:
-                                              "fa fa-arrow-down arrow",
-                                            attrs: { "aria-hidden": "true" }
+                                            staticClass: "fa fa-caret-right",
+                                            attrs: {
+                                              role: "button",
+                                              "aria-hidden": "true",
+                                              title:
+                                                "Show column '" +
+                                                column.name +
+                                                "'"
+                                            }
                                           })
                                         ]
                                       )
                                     ],
                                     1
                                   )
-                                ],
-                                2
-                              )
-                            : _vm._e(),
-                          _vm._v(" "),
-                          !column.hidden
-                            ? _c(
-                                "div",
-                                {
-                                  staticClass: "group",
-                                  on: {
-                                    click: function($event) {
-                                      _vm.groupingColumns.indexOf(column) > -1
-                                        ? _vm.ungroup(column)
-                                        : _vm.group(column)
-                                    }
-                                  }
-                                },
-                                [
-                                  _c("i", {
-                                    directives: [
-                                      {
-                                        name: "show",
-                                        rawName: "v-show",
-                                        value:
-                                          _vm.groupingColumns.indexOf(
-                                            column
-                                          ) === -1,
-                                        expression:
-                                          "groupingColumns.indexOf(column) === -1"
-                                      }
-                                    ],
-                                    staticClass: "fa fa-object-group",
-                                    attrs: {
-                                      "aria-hidden": "true",
-                                      title:
-                                        "Group column '" + column.name + "'"
-                                    }
-                                  }),
-                                  _vm._v(" "),
-                                  _c("i", {
-                                    directives: [
-                                      {
-                                        name: "show",
-                                        rawName: "v-show",
-                                        value:
-                                          _vm.groupingColumns.indexOf(
-                                            column
-                                          ) !== -1,
-                                        expression:
-                                          "groupingColumns.indexOf(column) !== -1"
-                                      }
-                                    ],
-                                    staticClass: "fa fa-object-ungroup",
-                                    attrs: {
-                                      "aria-hidden": "true",
-                                      title:
-                                        "Ungroup column '" + column.name + "'"
-                                    }
-                                  })
                                 ]
-                              )
-                            : _vm._e(),
-                          _vm._v(" "),
-                          !column.hidden
-                            ? _c("div", { staticClass: "filter" }, [
-                                _c("i", {
-                                  staticClass: "fa fa-filter",
-                                  attrs: {
-                                    "aria-hidden": "true",
-                                    title: "Filter '" + column.name + "'"
-                                  }
-                                })
-                              ])
-                            : _vm._e(),
-                          _vm._v(" "),
-                          _c("div", { staticClass: "filter-container" }, [
-                            _c("div", { staticClass: "filter-window" }, [
-                              _c(
-                                "select",
-                                {
-                                  on: {
-                                    input: function($event) {
-                                      _vm.selectFilter(
-                                        column,
-                                        $event.target.value
-                                      )
+                              : _vm._e(),
+                            _vm._v(" "),
+                            !column.hidden
+                              ? _c(
+                                  "div",
+                                  {
+                                    staticClass:
+                                      "name hint hint--bottom hint--info",
+                                    style: { width: _vm.getMinWidth(column) },
+                                    attrs: { "data-hint": column.name },
+                                    on: {
+                                      click: [
+                                        function($event) {
+                                          if (
+                                            $event.ctrlKey ||
+                                            $event.shiftKey ||
+                                            $event.altKey ||
+                                            $event.metaKey
+                                          ) {
+                                            return null
+                                          }
+                                          _vm.sortByOne(column)
+                                        },
+                                        function($event) {
+                                          if (!$event.ctrlKey) {
+                                            return null
+                                          }
+                                          _vm.sortByMany(column)
+                                        }
+                                      ]
                                     }
-                                  }
-                                },
-                                _vm._l(_vm.filteringModes, function(
-                                  filteringMode,
-                                  filteringModeName
-                                ) {
-                                  return filteringMode.type == "all" ||
-                                    filteringMode.type == column.type
+                                  },
+                                  [
+                                    _vm._t(
+                                      column.id + "-header",
+                                      [
+                                        _vm._v(
+                                          "\n\t\t\t\t\t\t\t\t\t" +
+                                            _vm._s(column.name) +
+                                            "\n\t\t\t\t\t\t\t\t"
+                                        )
+                                      ],
+                                      {
+                                        cells: _vm.getCells(
+                                          _vm.items,
+                                          column.id
+                                        )
+                                      }
+                                    ),
+                                    _vm._v(" "),
+                                    _vm.state.sortable
+                                      ? [
+                                          _c(
+                                            "span",
+                                            {
+                                              directives: [
+                                                {
+                                                  name: "show",
+                                                  rawName: "v-show",
+                                                  value:
+                                                    column.sortingDirection,
+                                                  expression:
+                                                    "column.sortingDirection"
+                                                }
+                                              ]
+                                            },
+                                            [
+                                              _c(
+                                                "transition",
+                                                {
+                                                  attrs: {
+                                                    name: "sort-ascending",
+                                                    mode: "out-in"
+                                                  }
+                                                },
+                                                [
+                                                  _c("i", {
+                                                    directives: [
+                                                      {
+                                                        name: "show",
+                                                        rawName: "v-show",
+                                                        value:
+                                                          column.sortingDirection ==
+                                                          1,
+                                                        expression:
+                                                          "column.sortingDirection == 1"
+                                                      }
+                                                    ],
+                                                    staticClass:
+                                                      "fa fa-arrow-up arrow",
+                                                    attrs: {
+                                                      "aria-hidden": "true"
+                                                    }
+                                                  })
+                                                ]
+                                              ),
+                                              _vm._v(" "),
+                                              _c(
+                                                "transition",
+                                                {
+                                                  attrs: {
+                                                    name: "sort-descending",
+                                                    mode: "out-in"
+                                                  }
+                                                },
+                                                [
+                                                  _c("i", {
+                                                    directives: [
+                                                      {
+                                                        name: "show",
+                                                        rawName: "v-show",
+                                                        value:
+                                                          column.sortingDirection ==
+                                                          -1,
+                                                        expression:
+                                                          "column.sortingDirection == -1"
+                                                      }
+                                                    ],
+                                                    staticClass:
+                                                      "fa fa-arrow-down arrow",
+                                                    attrs: {
+                                                      "aria-hidden": "true"
+                                                    }
+                                                  })
+                                                ]
+                                              )
+                                            ],
+                                            1
+                                          )
+                                        ]
+                                      : _vm._e()
+                                  ],
+                                  2
+                                )
+                              : _vm._e(),
+                            _vm._v(" "),
+                            _vm.state.groupable
+                              ? [
+                                  !column.hidden
                                     ? _c(
-                                        "option",
+                                        "div",
                                         {
-                                          domProps: { value: filteringModeName }
+                                          staticClass: "group",
+                                          on: {
+                                            click: function($event) {
+                                              _vm.groupingColumns.indexOf(
+                                                column
+                                              ) > -1
+                                                ? _vm.ungroup(column)
+                                                : _vm.group(column)
+                                            }
+                                          }
                                         },
                                         [
-                                          _vm._v(
-                                            "\r\n\t\t\t\t\t\t\t\t\t\t\t" +
-                                              _vm._s(filteringModeName) +
-                                              "\r\n\t\t\t\t\t\t\t\t\t\t"
-                                          )
+                                          _c("i", {
+                                            directives: [
+                                              {
+                                                name: "show",
+                                                rawName: "v-show",
+                                                value:
+                                                  _vm.groupingColumns.indexOf(
+                                                    column
+                                                  ) === -1,
+                                                expression:
+                                                  "groupingColumns.indexOf(column) === -1"
+                                              }
+                                            ],
+                                            staticClass: "fa fa-object-group",
+                                            attrs: {
+                                              "aria-hidden": "true",
+                                              title:
+                                                "Group column '" +
+                                                column.name +
+                                                "'"
+                                            }
+                                          }),
+                                          _vm._v(" "),
+                                          _c("i", {
+                                            directives: [
+                                              {
+                                                name: "show",
+                                                rawName: "v-show",
+                                                value:
+                                                  _vm.groupingColumns.indexOf(
+                                                    column
+                                                  ) !== -1,
+                                                expression:
+                                                  "groupingColumns.indexOf(column) !== -1"
+                                              }
+                                            ],
+                                            staticClass: "fa fa-object-ungroup",
+                                            attrs: {
+                                              "aria-hidden": "true",
+                                              title:
+                                                "Ungroup column '" +
+                                                column.name +
+                                                "'"
+                                            }
+                                          })
                                         ]
                                       )
                                     : _vm._e()
-                                })
-                              ),
-                              _vm._v(" "),
-                              _c("input", {
-                                on: {
-                                  input: function($event) {
-                                    _vm.selectValueForFilter(
-                                      column,
-                                      $event.target.value
-                                    )
-                                  }
-                                }
-                              }),
-                              _vm._v(" "),
-                              _c(
-                                "button",
-                                {
-                                  on: {
-                                    click: function($event) {
-                                      _vm.clearFilter(column)
-                                    }
-                                  }
-                                },
-                                [_vm._v("Clear")]
-                              )
-                            ])
-                          ]),
-                          _vm._v(" "),
-                          !column.hidden
-                            ? _c("div", { staticClass: "mover-container" }, [
-                                _c("div", {
-                                  staticClass: "mover",
-                                  on: {
-                                    mousedown: function($event) {
-                                      _vm.beginResizeColumn(column, $event)
-                                    }
-                                  }
-                                })
-                              ])
-                            : _vm._e()
-                        ])
+                                ]
+                              : _vm._e(),
+                            _vm._v(" "),
+                            _vm.state.filtrable
+                              ? [
+                                  !column.hidden
+                                    ? _c("div", { staticClass: "filter" }, [
+                                        _c("i", {
+                                          staticClass: "fa fa-filter",
+                                          attrs: {
+                                            "aria-hidden": "true",
+                                            title:
+                                              "Filter '" + column.name + "'"
+                                          }
+                                        })
+                                      ])
+                                    : _vm._e(),
+                                  _vm._v(" "),
+                                  _c(
+                                    "div",
+                                    { staticClass: "filter-container" },
+                                    [
+                                      _c(
+                                        "div",
+                                        { staticClass: "filter-window" },
+                                        [
+                                          _c(
+                                            "select",
+                                            {
+                                              on: {
+                                                input: function($event) {
+                                                  _vm.selectFilter(
+                                                    column,
+                                                    $event.target.value
+                                                  )
+                                                }
+                                              }
+                                            },
+                                            _vm._l(_vm.filteringModes, function(
+                                              filteringMode,
+                                              filteringModeName
+                                            ) {
+                                              return filteringMode.type ==
+                                                "all" ||
+                                                filteringMode.type ==
+                                                  column.type
+                                                ? _c(
+                                                    "option",
+                                                    {
+                                                      domProps: {
+                                                        value: filteringModeName
+                                                      }
+                                                    },
+                                                    [
+                                                      _vm._v(
+                                                        "\n\t\t\t\t\t\t\t\t\t\t\t\t" +
+                                                          _vm._s(
+                                                            filteringModeName
+                                                          ) +
+                                                          "\n\t\t\t\t\t\t\t\t\t\t\t"
+                                                      )
+                                                    ]
+                                                  )
+                                                : _vm._e()
+                                            })
+                                          ),
+                                          _vm._v(" "),
+                                          _c("input", {
+                                            on: {
+                                              input: function($event) {
+                                                _vm.selectValueForFilter(
+                                                  column,
+                                                  $event.target.value
+                                                )
+                                              }
+                                            }
+                                          }),
+                                          _vm._v(" "),
+                                          _c(
+                                            "button",
+                                            {
+                                              on: {
+                                                click: function($event) {
+                                                  _vm.clearFilter(column)
+                                                }
+                                              }
+                                            },
+                                            [_vm._v("Clear")]
+                                          )
+                                        ]
+                                      )
+                                    ]
+                                  )
+                                ]
+                              : _vm._e(),
+                            _vm._v(" "),
+                            _vm.state.resizable
+                              ? [
+                                  !column.hidden
+                                    ? _c(
+                                        "div",
+                                        { staticClass: "mover-container" },
+                                        [
+                                          _c("div", {
+                                            staticClass: "mover",
+                                            on: {
+                                              mousedown: function($event) {
+                                                _vm.beginResizeColumn(
+                                                  column,
+                                                  $event
+                                                )
+                                              }
+                                            }
+                                          })
+                                        ]
+                                      )
+                                    : _vm._e()
+                                ]
+                              : _vm._e()
+                          ],
+                          2
+                        )
                       ]
                     )
                   })
@@ -1530,19 +1670,21 @@ var render = function() {
               "tbody",
               { staticClass: "body" },
               [
-                _vm._l(_vm.getItemsOnCurrentPage(), function(item, i) {
+                _vm._l(_vm.data.items, function(item, i) {
                   return !_vm.hasGrouped && _vm.filter(item)
                     ? _c(
                         "tr",
                         { key: item, staticClass: "lighting-row" },
-                        _vm._l(_vm.columnsInfo, function(column) {
+                        _vm._l(_vm.state.columns, function(column) {
                           return !column.hidden || i == 0
                             ? _c(
                                 "td",
                                 {
                                   class: column.hidden ? "hidden-column" : "",
                                   attrs: {
-                                    rowspan: column.hidden ? _vm.page.size : 1
+                                    rowspan: column.hidden
+                                      ? _vm.state.paging.size
+                                      : 1
                                   }
                                 },
                                 [
@@ -1551,9 +1693,9 @@ var render = function() {
                                         column.id + "-column",
                                         [
                                           _vm._v(
-                                            "\r\n\t\t\t\t\t\t\t" +
+                                            "\n\t\t\t\t\t\t\t" +
                                               _vm._s(item[column.id]) +
-                                              "\r\n\t\t\t\t\t\t"
+                                              "\n\t\t\t\t\t\t"
                                           )
                                         ],
                                         { value: item[column.id] }
@@ -1597,7 +1739,7 @@ var render = function() {
                                   attrs: {
                                     colspan:
                                       _vm.groupingColumns.length +
-                                      _vm.columnsInfo.length -
+                                      _vm.state.columns.length -
                                       i -
                                       1
                                   }
@@ -1607,11 +1749,11 @@ var render = function() {
                                     _vm.groupingColumns[i].id + "-group",
                                     [
                                       _vm._v(
-                                        "\r\n\t\t\t\t\t\t\t\t" +
+                                        "\n\t\t\t\t\t\t\t\t" +
                                           _vm._s(_vm.groupingColumns[i].name) +
                                           ": " +
                                           _vm._s(groupValue) +
-                                          "\r\n\t\t\t\t\t\t\t"
+                                          "\n\t\t\t\t\t\t\t"
                                       )
                                     ],
                                     {
@@ -1644,7 +1786,7 @@ var render = function() {
                                       })
                                     : _vm._e(),
                                   _vm._v(" "),
-                                  _vm._l(_vm.columnsInfo, function(column) {
+                                  _vm._l(_vm.state.columns, function(column) {
                                     return _c(
                                       "td",
                                       [
@@ -1653,9 +1795,9 @@ var render = function() {
                                               column.id + "-column",
                                               [
                                                 _vm._v(
-                                                  "\r\n\t\t\t\t\t\t\t\t" +
+                                                  "\n\t\t\t\t\t\t\t\t" +
                                                     _vm._s(item[column.id]) +
-                                                    "\r\n\t\t\t\t\t\t\t"
+                                                    "\n\t\t\t\t\t\t\t"
                                                 )
                                               ],
                                               { value: item[column.id] }
@@ -1685,10 +1827,10 @@ var render = function() {
           "button",
           {
             staticClass: "paging-button",
-            attrs: { disabled: _vm.page.number === 1 },
+            attrs: { disabled: _vm.state.paging.current === 1 },
             on: {
               click: function($event) {
-                _vm.firstPage()
+                _vm.goToPage(1)
               }
             }
           },
@@ -1704,10 +1846,10 @@ var render = function() {
           "button",
           {
             staticClass: "paging-button",
-            attrs: { disabled: _vm.page.number === 1 },
+            attrs: { disabled: _vm.state.paging.current === 1 },
             on: {
               click: function($event) {
-                _vm.prevPage()
+                _vm.goToPage(_vm.state.paging.current - 1)
               }
             }
           },
@@ -1723,7 +1865,7 @@ var render = function() {
           "div",
           { staticClass: "paging-row" },
           [
-            _vm.page.number > _vm.maxCountOfPage
+            _vm.state.paging.current > _vm.maxCountOfPage
               ? _c(
                   "button",
                   {
@@ -1732,7 +1874,7 @@ var render = function() {
                       click: function($event) {
                         _vm.goToPage(
                           Math.floor(
-                            (_vm.page.number - 1) / _vm.maxCountOfPage
+                            (_vm.state.paging.current - 1) / _vm.maxCountOfPage
                           ) * _vm.maxCountOfPage
                         )
                       }
@@ -1747,7 +1889,7 @@ var render = function() {
                 )
               : _vm._e(),
             _vm._v(" "),
-            _vm._l(new Array(_vm.pageCount), function(item, i) {
+            _vm._l(new Array(_vm.state.paging.count), function(item, i) {
               return [
                 _vm.canShowPageNumber(i)
                   ? [
@@ -1755,7 +1897,8 @@ var render = function() {
                         "button",
                         {
                           staticClass: "paging-button",
-                          class: i + 1 == _vm.page.number ? "selected" : "",
+                          class:
+                            i + 1 == _vm.state.paging.current ? "selected" : "",
                           on: {
                             click: function($event) {
                               _vm.goToPage(i + 1)
@@ -1764,9 +1907,7 @@ var render = function() {
                         },
                         [
                           _vm._v(
-                            "\r\n\t\t\t\t\t\t" +
-                              _vm._s(i + 1) +
-                              "\r\n\t\t\t\t\t"
+                            "\n\t\t\t\t\t\t" + _vm._s(i + 1) + "\n\t\t\t\t\t"
                           )
                         ]
                       )
@@ -1775,9 +1916,9 @@ var render = function() {
               ]
             }),
             _vm._v(" "),
-            _vm.pageCount != _vm.maxCountOfPage &&
-            _vm.page.number <=
-              Math.floor(_vm.pageCount / _vm.maxCountOfPage) *
+            _vm.state.paging.count != _vm.maxCountOfPage &&
+            _vm.state.paging.current <=
+              Math.floor(_vm.state.paging.count / _vm.maxCountOfPage) *
                 _vm.maxCountOfPage
               ? _c(
                   "button",
@@ -1787,7 +1928,7 @@ var render = function() {
                       click: function($event) {
                         _vm.goToPage(
                           Math.floor(
-                            (_vm.page.number - 1) / _vm.maxCountOfPage
+                            (_vm.state.paging.current - 1) / _vm.maxCountOfPage
                           ) *
                             _vm.maxCountOfPage +
                             _vm.maxCountOfPage +
@@ -1812,10 +1953,12 @@ var render = function() {
           "button",
           {
             staticClass: "paging-button",
-            attrs: { disabled: _vm.page.number === _vm.pageCount },
+            attrs: {
+              disabled: _vm.state.paging.current === _vm.state.paging.count
+            },
             on: {
               click: function($event) {
-                _vm.nextPage()
+                _vm.goToPage(_vm.state.paging.current + 1)
               }
             }
           },
@@ -1831,10 +1974,12 @@ var render = function() {
           "button",
           {
             staticClass: "paging-button",
-            attrs: { disabled: _vm.page.number === _vm.pageCount },
+            attrs: {
+              disabled: _vm.state.paging.current === _vm.state.paging.count
+            },
             on: {
               click: function($event) {
-                _vm.lastPage()
+                _vm.goToPage(_vm.state.paging.count)
               }
             }
           },
@@ -1853,8 +1998,8 @@ var render = function() {
               {
                 name: "model",
                 rawName: "v-model",
-                value: _vm.page.size,
-                expression: "page.size"
+                value: _vm.state.paging.size,
+                expression: "state.paging.size"
               }
             ],
             staticClass: "paging-select",
@@ -1869,7 +2014,7 @@ var render = function() {
                     return val
                   })
                 _vm.$set(
-                  _vm.page,
+                  _vm.state.paging,
                   "size",
                   $event.target.multiple ? $$selectedVal : $$selectedVal[0]
                 )
@@ -1879,23 +2024,33 @@ var render = function() {
           _vm._l(_vm.pageSizes, function(size) {
             return _c("option", { domProps: { value: size } }, [
               _vm._v(
-                "\r\n\t\t\t\t" + _vm._s(size == 0 ? "All" : size) + "\r\n\t\t\t"
+                "\n\t\t\t\t" + _vm._s(size == 0 ? "All" : size) + "\n\t\t\t"
               )
             ])
           })
         ),
         _vm._v(" "),
         _c("div", { staticClass: "paging-select-hint" }, [
-          _vm._v("\r\n\t\t\titems per page\r\n\t\t")
+          _vm._v("\n\t\t\titems per page\n\t\t")
         ]),
         _vm._v(" "),
         _c("div", { staticClass: "paging-info" }, [
           _vm._v(
-            "\r\n\t\t\t" +
-              _vm._s((_vm.page.number - 1) * _vm.page.size + 1) +
-              " - \r\n\t\t\t{{ page.size == 0 || page.number * page.size > items.length \r\n\t\t\t\t? items.length\r\n\t\t\t\t: page.number * page.size }} \r\n\t\t\tof \r\n\t\t\t" +
+            "\n\t\t\t" +
+              _vm._s(
+                (_vm.state.paging.current - 1) * _vm.state.paging.size + 1
+              ) +
+              " - \n\t\t\t" +
+              _vm._s(
+                _vm.state.paging.size == 0 ||
+                _vm.state.paging.current * _vm.state.paging.size >
+                  _vm.items.length
+                  ? _vm.items.length
+                  : _vm.state.paging.current * _vm.state.paging.size
+              ) +
+              " \n\t\t\tof \n\t\t\t" +
               _vm._s(_vm.items.length) +
-              " \r\n\t\t\titems\r\n\t\t"
+              " \n\t\t\titems\n\t\t"
           )
         ])
       ])
@@ -4615,7 +4770,7 @@ function applyToTag (styleElement, obj) {
 
 __webpack_require__(11);
 
-__webpack_require__(23);
+__webpack_require__(25);
 
 /***/ }),
 /* 11 */
@@ -4628,7 +4783,7 @@ var _vueTable = __webpack_require__(15);
 
 var _vueTable2 = _interopRequireDefault(_vueTable);
 
-var _vueSelect = __webpack_require__(18);
+var _vueSelect = __webpack_require__(20);
 
 var _vueSelect2 = _interopRequireDefault(_vueSelect);
 
@@ -5097,7 +5252,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(0);
 /* harmony import */ var _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony reexport (unknown) */ for(var __WEBPACK_IMPORT_KEY__ in _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__) if(__WEBPACK_IMPORT_KEY__ !== 'default') (function(key) { __webpack_require__.d(__webpack_exports__, key, function() { return _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__[key]; }) }(__WEBPACK_IMPORT_KEY__));
-/* harmony import */ var _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_vue_table_html__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(5);
+/* harmony import */ var _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(5);
 /* harmony import */ var _node_modules_vue_loader_lib_runtime_component_normalizer__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(2);
 var disposed = false
 function injectStyle (context) {
@@ -5119,8 +5274,8 @@ var __vue_module_identifier__ = null
 
 var Component = Object(_node_modules_vue_loader_lib_runtime_component_normalizer__WEBPACK_IMPORTED_MODULE_2__[/* default */ "a"])(
   _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0___default.a,
-  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_vue_table_html__WEBPACK_IMPORTED_MODULE_1__[/* render */ "a"],
-  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_vue_table_html__WEBPACK_IMPORTED_MODULE_1__[/* staticRenderFns */ "b"],
+  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_1__[/* render */ "a"],
+  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_1__[/* staticRenderFns */ "b"],
   __vue_template_functional__,
   __vue_styles__,
   __vue_scopeId__,
@@ -5166,6 +5321,338 @@ exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;
 
 /***/ }),
 /* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+exports.getReadableName = getReadableName;
+exports.indexOfItemInArray = indexOfItemInArray;
+exports.removeItemInArray = removeItemInArray;
+exports.itemExistInArray = itemExistInArray;
+exports.getColumns = getColumns;
+exports.getTypedValue = getTypedValue;
+exports.sort = sort;
+exports.filter = filter;
+exports.group = group;
+exports.page = page;
+function getReadableName(name) {
+	var result = name[0].toUpperCase();
+	for (var i = 1; i < name.length; i++) {
+		var c = name[i];
+		var cUpper = c.toUpperCase();
+		if ('0123456789'.indexOf(c) === -1 && cUpper === c) {
+			result += ' ' + cUpper;
+		} else {
+			result += c;
+		}
+	}
+	return result;
+}
+
+function indexOfItemInArray(array, item, selector) {
+	var result = -1;
+	for (var i = 0; i < array.length; i++) {
+		if (selector(array[i]) === item) {
+			result = i;
+			break;
+		}
+	}
+	return result;
+}
+
+function removeItemInArray(array, item, selector) {
+	var indexOfItem = indexOfItemInArray(array, item, selector);
+	if (indexOfItem !== -1) {
+		array.splice(indexOfItem, 1);
+	}
+}
+
+function itemExistInArray(array, item, selector) {
+	var indexOfItem = indexOfItemInArray(array, item, selector);
+	if (indexOfItem !== -1) {
+		return false;
+	}
+	return true;
+}
+
+function getColumns(columns, sortable, filtrable, groupable, resizable, movable, hidable) {
+	var defaultType = 'string';
+	return columns.map(function (x) {
+		switch (typeof x === 'undefined' ? 'undefined' : _typeof(x)) {
+			case 'string':
+				return {
+					id: x,
+					name: getReadableName(x),
+					type: defaultType,
+					sortable: sortable || false,
+					filtrable: filtrable || false,
+					groupable: groupable || false,
+					resizable: resizable || false,
+					movable: movable || false,
+					hidable: hidable || false,
+					width: undefined
+				};
+			case 'object':
+				if (Array.isArray(x)) {
+					return {
+						id: x[0],
+						name: x[1] || getReadableName(x[0]),
+						type: x[2] || defaultType,
+						sortable: sortable || false,
+						filtrable: filtrable || false,
+						groupable: groupable || false,
+						resizable: resizable || false,
+						movable: movable || false,
+						hidable: hidable || false,
+						width: undefined
+					};
+				} else {
+					return {
+						id: x.id,
+						name: x.name || getReadableName(x.id),
+						type: x.type || defaultType,
+						sortable: x.sortable || sortable || false,
+						filtrable: x.filtrable || filtrable || false,
+						groupable: x.groupable || groupable || false,
+						resizable: x.resizable || resizable || false,
+						movable: x.movable || movable || false,
+						hidable: x.hidable || hidable || false,
+						width: x.width
+					};
+				}
+		}
+	});
+}
+
+function getTypedValue(value, type) {
+	switch (type) {
+		case 'date':
+			/* TODO: use moment.js */
+			return Date.parse(value);
+		case 'string':
+			return value;
+		case 'number':
+			return +value;
+		case 'boolean':
+			return !!value;
+	}
+}
+
+function sort(data, state) {
+	function sortComparer(item1, item2, sortingColumns) {
+		var result = 0;
+		for (var i = 0; i < sortingColumns.length; i++) {
+			var sortingColumn = sortingColumns[i];
+			var _ref = [item1[sortingColumn.id], item2[sortingColumn.id]],
+			    a = _ref[0],
+			    b = _ref[1];
+
+			result = result || compare(getTypedValue(a, sortingColumn.type), getTypedValue(b, sortingColumn.type), sortingColumn.sortingDirection);
+		}
+		return result;
+	}
+
+	function compare(a, b, direction) {
+		return a > b ? direction : a < b ? -direction : 0;
+	}
+
+	if (state.sortable) {
+		if (state.sortingColumns && state.sortingColumns.length > 0) {
+			data.items.sort(function (item1, item2) {
+				return sortComparer(item1, item2, state.sortingColumns);
+			});
+		}
+	}
+}
+
+function filter(data, state) {
+	if (state.filtrable) {
+		if (state.filteringColumns && state.filteringColumns.length > 0) {
+			data.items = data.items.filter(function (value) {
+				var result = true;
+				for (var i = 0; i < state.filteringColumns.length; i++) {
+					var filteringItem = state.filteringColumns[i];
+					result = result && filteringItem.filter.predicate(value, filteringItem.expected);
+				}
+				return result;
+			});
+		}
+	}
+}
+
+function group(data, state) {
+	if (state.groupable) {
+		if (state.groupingColumns && state.groupingColumns.length > 0) {
+			for (var i = 0; i < data.items.length; i++) {
+				var item = data.items[i];
+				var valueOfGroupingFields = [];
+				for (var j = 0; j < state.groupingColumns.length; j++) {
+					var groupingColumn = state.groupingColumns[j];
+					var value = item[groupingColumn.id];
+					valueOfGroupingFields.push(value);
+				}
+				item["$_grouping_values"] = valueOfGroupingFields;
+			}
+		}
+	}
+}
+
+function page(data, state) {
+	if (state.pageable) {
+		if (state.paging) {
+			if (state.paging.size == 0) {
+				return;
+			}
+			var from = state.paging.size * (state.paging.current - 1);
+			var to = state.paging.size * state.paging.current;
+			data.items = data.items.slice(from, to);
+			data.paging = state.paging;
+		}
+	}
+}
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Column = exports.Column = function Column() {
+	_classCallCheck(this, Column);
+
+	this.id;
+	this.name;
+	this.type;
+	this.sortable;
+	this.filtrable;
+	this.groupable;
+	this.resizable;
+	this.width;
+	this.grouping;
+	this.resizing;
+	this.sorting;
+	this.filtering;
+};
+
+var columnFilters = exports.columnFilters = {
+	'eq': {
+		predicate: function predicate(curr, exp) {
+			return curr === exp;
+		},
+		title: 'Is equal to',
+		type: 'all'
+	},
+	"neq": {
+		predicate: function predicate(curr, exp) {
+			return curr !== exp;
+		},
+		title: 'Is not equal to',
+		type: 'all'
+	},
+	'null': {
+		predicate: function predicate(curr) {
+			return curr === null;
+		},
+		title: 'Is null',
+		type: 'all',
+		single: true
+	},
+	'nnull': {
+		predicate: function predicate(curr) {
+			return curr !== null;
+		},
+		title: 'Is not null',
+		type: 'all',
+		single: true
+	},
+	'greq': {
+		predicate: function predicate(curr, exp) {
+			return +curr >= +exp;
+		},
+		title: 'Is greater than or equal to',
+		type: 'number'
+	},
+	'gr': {
+		predicate: function predicate(curr, exp) {
+			return +curr > +exp;
+		},
+		title: 'Is greater than',
+		type: 'number'
+	},
+	'lseq': {
+		predicate: function predicate(curr, exp) {
+			return +curr <= +exp;
+		},
+		title: 'Is less than or equal to',
+		type: 'number'
+	},
+	'ls': {
+		predicate: function predicate(curr, exp) {
+			return +curr < +exp;
+		},
+		title: 'Is less than',
+		type: 'number'
+	},
+	'strtwth': {
+		predicate: function predicate(curr, exp) {
+			return curr.startsWith(exp);
+		},
+		title: 'Starts with',
+		type: 'string'
+	},
+	'endwth': {
+		predicate: function predicate(curr, exp) {
+			return curr.endsWith(exp);
+		},
+		title: 'Ends with',
+		type: 'string'
+	},
+	'in': {
+		predicate: function predicate(curr, exp) {
+			return curr.includes(exp);
+		},
+		title: 'Contains',
+		type: 'string'
+	},
+	'nin': {
+		predicate: function predicate(curr, exp) {
+			return !curr.includes(exp);
+		},
+		title: 'Does not contain',
+		type: 'string'
+	},
+	'empt': _defineProperty({
+		predicate: function predicate(curr, exp) {
+			return curr === "";
+		},
+		type: 'Is empty'
+	}, 'type', 'string'),
+	'nempt': _defineProperty({
+		predicate: function predicate(curr, exp) {
+			return curr !== "";
+		},
+		type: 'Is not empty'
+	}, 'type', 'string')
+};
+
+/***/ }),
+/* 20 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -5178,7 +5665,7 @@ __webpack_require__.r(__webpack_exports__);
 var disposed = false
 function injectStyle (context) {
   if (disposed) return
-  __webpack_require__(19)
+  __webpack_require__(21)
 }
 /* script */
 
@@ -5212,13 +5699,13 @@ if (false) {}
 
 
 /***/ }),
-/* 19 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(20);
+var content = __webpack_require__(22);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
@@ -5228,7 +5715,7 @@ var update = add("da1517f0", content, false, {});
 if(false) {}
 
 /***/ }),
-/* 20 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports = module.exports = __webpack_require__(8)(false);
@@ -5242,7 +5729,7 @@ exports.push([module.i, "\n.vueselect {\n  width: 100%;\n  max-width: 450px;\n  
 
 
 /***/ }),
-/* 21 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6288,10 +6775,10 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
   );
 });
 //# sourceMappingURL=fuse.js.map
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(22)(module)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(24)(module)))
 
 /***/ }),
-/* 22 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6321,16 +6808,16 @@ module.exports = function (module) {
 };
 
 /***/ }),
-/* 23 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-__webpack_require__(24);
+__webpack_require__(26);
 
 /***/ }),
-/* 24 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6418,7 +6905,7 @@ var app = new Vue({
         }]
     },
     created: function created() {
-        this.addRandomData(125); // cols.reduce((a, b) => a + b, 0)
+        this.addRandomData(2500); // cols.reduce((a, b) => a + b, 0)
     },
     methods: {
         addRandomData: function addRandomData(count) {
@@ -6470,257 +6957,6 @@ var app = new Vue({
     }
 });
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(7)))
-
-/***/ }),
-/* 25 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-exports.getReadableName = getReadableName;
-exports.getTypedValue = getTypedValue;
-exports.sort = sort;
-exports.filter = filter;
-exports.group = group;
-exports.page = page;
-function getReadableName(name) {
-	var result = name[0].toUpperCase();
-	for (var i = 1; i < name.length; i++) {
-		var c = name[i];
-		var cUpper = c.toUpperCase();
-		if ('0123456789'.indexOf(c) === -1 && cUpper === c) {
-			result += ' ' + cUpper;
-		} else {
-			result += c;
-		}
-	}
-	return result;
-}
-
-function getTypedValue(value, type) {
-	switch (type) {
-		case VueTableColumnType.date:
-			/* TODO: use moment.js */
-			return Date.parse(value);
-		case VueTableColumnType.string:
-			return value;
-		case VueTableColumnType.number:
-			return +value;
-		case VueTableColumnType.boolean:
-			return !!value;
-	}
-}
-
-function sort(data, state) {
-	function sortComparer(item1, item2, sorting) {
-		var result = 0;
-		for (var i = 0; i < sorting.length; i++) {
-			var sortingItem = sorting[i];
-			var _ref = [item1[sortingItem.column.id], item2[sortingItem.column.id]],
-			    a = _ref[0],
-			    b = _ref[1];
-
-			result = result || this.compare(getTypedValue(a, sortingItem.column.type), getTypedValue(b, sortingItem.column.type), sortingItem.direction ? 1 : -1);
-		}
-		return 0;
-	}
-
-	function compare(a, b, direction) {
-		return a > b ? direction : a < b ? -direction : 0;
-	}
-
-	if (state.sortable) {
-		if (state.sorting && state.sorting.length > 0) {
-			var _sortComparer = this.sortComparer;
-			data.items.sort(function (item1, item2) {
-				return _sortComparer(item1, item2, state.sorting);
-			});
-		}
-	}
-}
-
-function filter(data, state) {
-	if (state.filtrable) {
-		if (state.filtering && state.filtering.length > 0) {
-			data.items = data.items.filter(function (value) {
-				var result = true;
-				for (var i = 0; i < state.filtering.length; i++) {
-					var filteringItem = state.filtering[i];
-					result = result && filteringItem.filter.predicate(value, filteringItem.expected);
-				}
-				return result;
-			});
-		}
-	}
-}
-
-function group(data, state) {
-	if (state.groupable) {
-		if (state.grouping && state.grouping.length > 0) {
-			for (var i = 0; i < data.items.length; i++) {
-				var item = data.items[i];
-				var valueOfGroupingFields = [];
-				for (var j = 0; j < state.grouping.length; j++) {
-					var groupingColumn = state.grouping[j];
-					var value = item[groupingColumn.id];
-					valueOfGroupingFields.push(value);
-				}
-				item["$_grouping_values"] = valueOfGroupingFields;
-			}
-		}
-	}
-}
-
-function page(data, state) {
-	if (state.pageable) {
-		if (state.paging) {
-			if (state.paging.size == 0) {
-				return;
-			}
-			var from = state.paging.size * (state.paging.current - 1);
-			var to = state.paging.size * state.paging.current;
-			data.items = data.items.slice(from, to);
-			data.paging = state.paging;
-		}
-	}
-}
-
-/***/ }),
-/* 26 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var Column = exports.Column = function Column() {
-	_classCallCheck(this, Column);
-
-	this.id;
-	this.name;
-	this.type;
-	this.sortable;
-	this.filtrable;
-	this.groupable;
-	this.resizable;
-	this.width;
-	this.grouping;
-	this.resizing;
-	this.sorting;
-	this.filtering;
-};
-
-var columnFilters = exports.columnFilters = {
-	'eq': {
-		predicate: function predicate(curr, exp) {
-			return curr === exp;
-		},
-		title: 'Is equal to',
-		type: 'all'
-	},
-	"neq": {
-		predicate: function predicate(curr, exp) {
-			return curr !== exp;
-		},
-		title: 'Is not equal to',
-		type: 'all'
-	},
-	'null': {
-		predicate: function predicate(curr) {
-			return curr === null;
-		},
-		title: 'Is null',
-		type: 'all',
-		single: true
-	},
-	'nnull': {
-		predicate: function predicate(curr) {
-			return curr !== null;
-		},
-		title: 'Is not null',
-		type: 'all',
-		single: true
-	},
-	'greq': {
-		predicate: function predicate(curr, exp) {
-			return +curr >= +exp;
-		},
-		title: 'Is greater than or equal to',
-		type: 'number'
-	},
-	'gr': {
-		predicate: function predicate(curr, exp) {
-			return +curr > +exp;
-		},
-		title: 'Is greater than',
-		type: 'number'
-	},
-	'lseq': {
-		predicate: function predicate(curr, exp) {
-			return +curr <= +exp;
-		},
-		title: 'Is less than or equal to',
-		type: 'number'
-	},
-	'ls': {
-		predicate: function predicate(curr, exp) {
-			return +curr < +exp;
-		},
-		title: 'Is less than',
-		type: 'number'
-	},
-	'strtwth': {
-		predicate: function predicate(curr, exp) {
-			return curr.startsWith(exp);
-		},
-		title: 'Starts with',
-		type: 'string'
-	},
-	'endwth': {
-		predicate: function predicate(curr, exp) {
-			return curr.endsWith(exp);
-		},
-		title: 'Ends with',
-		type: 'string'
-	},
-	'in': {
-		predicate: function predicate(curr, exp) {
-			return curr.includes(exp);
-		},
-		title: 'Contains',
-		type: 'string'
-	},
-	'nin': {
-		predicate: function predicate(curr, exp) {
-			return !curr.includes(exp);
-		},
-		title: 'Does not contain',
-		type: 'string'
-	},
-	'empt': _defineProperty({
-		predicate: function predicate(curr, exp) {
-			return curr === "";
-		},
-		type: 'Is empty'
-	}, 'type', 'string'),
-	'nempt': _defineProperty({
-		predicate: function predicate(curr, exp) {
-			return curr !== "";
-		},
-		type: 'Is not empty'
-	}, 'type', 'string')
-};
 
 /***/ })
 /******/ ]);

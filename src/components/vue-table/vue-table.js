@@ -1,4 +1,4 @@
-import { getReadableName, sort, group, filter, page } from './vue-table-functions'
+import { getReadableName, removeItemInArray, indexOfItemInArray, getColumns, sort, group, filter, page } from './vue-table-functions'
 import { Column, columnFilters } from './vue-table-data';
 
 export default {
@@ -42,6 +42,11 @@ export default {
 			default: true,
 			required: false
 		},
+		hidable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
 		pageSizes: {
 			type: Array,
 			default: [25, 50, 100, 0],
@@ -51,17 +56,26 @@ export default {
 	data: function () {
 		return {
 			state: { 
+				columns: [],
+
 				sortable: this.sortable,
-				sorting: [], 	/* { column: , direction: } */
+				sortingColumns: [], 	/* { column: , direction: } */
+
 				filtrable: this.filtrable,
-				filtering: [],	/* { column: , filter: , expected: } */
+				filteringColumns: [],	/* { column: , filter: , expected: } */
+
 				groupable: this.groupable,
-				grouping: [],	/* column */
+				groupingColumns: [],
+
+				hidable: this.hidable,
+				hidingColumns: [],
+
 				movable: this.movable,
 				moving: {
 					dragable: null,
 					dropable: null
 				},
+
 				resizable: this.resizable,
 				resizing: {
 					column: null,
@@ -70,18 +84,22 @@ export default {
 						y: null
 					}
 				},
+
 				pageable: this.pageable,
 				paging: {
 					size: this.pageSizes[0],
+					count: this.countPage(this.pageSizes[0]),
 					current: 1
-				}
+				},
+
+				recalculate: 1
 			},
-			gates: {
+			gates: [
 				filter,
 				sort,
 				group,
 				page
-			},
+			],
 			sorting: {
 				column: null,
 				ascending: false
@@ -177,6 +195,22 @@ export default {
 	},
 	created () {
 		this.columnsInfo = this.getColumnsInfo();
+		this.state.columns = getColumns(
+			this.columns, 
+			this.sortable,
+			this.filtrable,
+			this.groupable,
+			this.resizable,
+			this.movable,
+			this.hidable);
+	},
+	watch: {
+		'state.paging.size': function(size) {
+			this.state.paging.count = this.countPage(size);
+			if (this.state.paging.current > this.state.paging.count) {
+				this.state.paging.current = this.state.paging.count;
+			}
+		}
 	},
 	computed: {
 		pageCount() {
@@ -212,12 +246,13 @@ export default {
 		hasGrouped() {
 			return this.groupingColumns && this.groupingColumns.length > 0;
 		},
-		rows() {
+		data() {
+			let recalulate = this.state.recalculate;
 			let result = {
 				items: this.items,
 				paging: null
 			}
-			for (let i = 0; i < this.gates; i++) {
+			for (let i = 0; i < this.gates.length; i++) {
 				let gate = this.gates[i];
 				gate(result, this.state);
 			}
@@ -225,6 +260,70 @@ export default {
 		}
 	},
 	methods: {
+		sortByMany(column) {
+			if (!column.sortingDirection) {
+				column.sortingDirection = 1;
+				this.state.sortingColumns.push(column);
+			}
+			else {
+				column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
+				this.forceUpdate();
+			}
+		},
+
+		sortByOne(column) {
+			if (!column.sortingDirection) {
+				for (let i = this.state.sortingColumns.length - 1; i >= 0; i--) {
+					this.removeColumnForSorting(this.state.sortingColumns[i])
+				}
+			}
+			this.sortByMany(column);
+		},
+
+		removeColumnForSorting(column) {
+			column.sortingDirection = undefined;
+			removeItemInArray(this.state.sortingColumns, column, x => x);
+		},
+
+		addColumForGrouping(column) {
+			column.grouping = true;
+			this.state.grouping.push(column);
+		},
+
+		removeColumForGrouping(column) {
+			column.grouping = false;
+			removeItemInArray(this.state.grouping, column);
+		},
+
+		addColumForFiltering(column, filter) {
+			column.filtering = filter;
+			this.state.filtering.push(column);
+		},
+
+		removeColumForFiltering(column) {
+			column.filtering = undefined;
+			removeItemInArray(this.state.filtering, column);
+		},
+
+		goToPage(i) {
+			if (i > 0 && i <= this.state.paging.count) {
+				this.state.paging.current = i;
+			}
+		},
+
+		canShowPageNumber(i) {
+			let num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+			return i >= num && i < num + this.maxCountOfPage;
+		},
+
+		countPage(size) {
+			return size == 0 ? 1 : Math.ceil(this.items.length / size)
+		},
+
+
+
+
+
 		getColumnsInfo() {
 			const defaultType = 'string';
 			let self = this;
@@ -324,11 +423,7 @@ export default {
 			this.page.number = 1;
 		},
 
-		goToPage(i) {
-			if (i > 0 && i <= this.pageCount) {
-				this.page.number = i;
-			}
-		},
+
 
 		columnDragStart(column, event) {
 			if (!this.resizable.column) {
@@ -370,31 +465,6 @@ export default {
 			else {
 				event.preventDefault();
 			}
-		},
-		
-		sort(column, group) {
-			let direction = this.sorting.column == column 
-				? (this.sorting.ascending ? -1 : 1)
-				: 1;
-			let getTypedValue = this.getTypedValue;
-			let sortFunction = (x, y) => 
-				getTypedValue(x[column.id], column.type) > getTypedValue(y[column.id], column.type)
-					? direction 
-					: getTypedValue(x[column.id], column.type) < getTypedValue(y[column.id], column.type)
-						? -direction 
-						: 0;
-			if (!group) {
-				this.items.sort(sortFunction);
-			}
-			else {
-				for (let i in this.groupedData) {
-					this.groupedData[i].sort(sortFunction);
-				}
-			}
-			this.sorting.column = column;
-			this.sorting.ascending = direction == 1 
-				? true 
-				: false;
 		},
 
 		group(column) {
@@ -502,11 +572,6 @@ export default {
 			this.$forceUpdate();
 		},
 
-		canShowPageNumber(i) {
-			let num = Math.floor((this.page.number - 1) / this.maxCountOfPage) * this.maxCountOfPage;
-			return i >= num && i < num + this.maxCountOfPage;
-		},
-
 		selectFilter(column, mode) {
 			column.filter = this.filteringModes[mode];
 			if (column.filter.single || column.filtrableValue) {
@@ -522,6 +587,7 @@ export default {
 		},
 
 		forceUpdate() {
+			this.state.recalculate = -this.state.recalculate;
 			this.$forceUpdate();
 		},
 

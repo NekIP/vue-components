@@ -1,3 +1,285 @@
-<template src="./vue-table.html"></template>
+<template>
+	<div class='vue-table'
+		@mousemove="resizeColumn($event)"
+		@mouseup="stopResizeColumn()">
+		<div class='group-area'
+				@dragenter="columnDragEnter(groupAreaName, $event)"
+				@dragend="columnDragEnd($event)">
+			<div 	class="group-item"
+					v-for="groupingColumn in groupingColumns"
+					@click="sort(groupingColumn)">
+				<div class="sort-icon">
+					<span v-show="sorting.column === groupingColumn">
+						<transition name="sort-ascending" mode="out-in">
+							<i 	v-show="sorting.ascending" 
+								class="fa fa-arrow-up arrow" 
+								aria-hidden="true"></i>
+						</transition>
+						<transition name="sort-descending" mode="out-in">
+							<i	v-show="!sorting.ascending" 
+								class="fa fa-arrow-down arrow" 
+								aria-hidden="true"></i>
+						</transition>
+					</span>
+				</div>
+				{{groupingColumn.name}}
+				<div @click="ungroup(groupingColumn)" class="ungroup">
+					<i class="fa fa-times" aria-hidden="true"></i>
+				</div>
+			</div>
+			<template v-if="!hasGrouped">
+				Drag a column header and drop it here to group by that column
+			</template>
+		</div>
+		<div class="table-container">
+			<table class="table" :style="{ width: getTableWidth() }">
+
+				<tfoot class="footer">
+					<tr>
+						<th v-for="i in state.grouping"></th>
+						<th v-for="column in state.columns">
+							<slot :name="column.id + '-footer'"
+								v-if="!column.hidden"
+								:cells="getCells(items, column.id)">
+							</slot>
+						</th>
+					</tr>
+				</tfoot>
+
+				<thead class="header">
+					<tr>
+						<th class="column" 
+							:key="j"
+							v-for="(trash, j) in groupingColumns" 
+							:style="{ width: 30 }"></th>
+
+						<th  v-for="column in state.columns"
+							:key="column.id"
+							class="column"
+							draggable="true"
+							@dragstart="columnDragStart(column, $event)"
+							@dragenter="columnDragEnter(column, $event)"
+							@dragend="columnDragEnd($event)"
+							:style="{ 
+								'min-width': getMinWidth(column) + minWidthBias, 
+								width: column.hidden 
+									? hiddenColumnSize
+									: column.width || getMinWidth(column) + minWidthBias
+							}">
+
+							<div class="container">
+
+								<template v-if="state.hidable">
+									<div class="rol-up" @click="column.hidden ? showColumn(column, $event) : hideColumn(column, $event)">
+										<transition name="sort-ascending" mode="out-in">
+											<i  class="fa fa-caret-left" 
+												role="button"
+												aria-hidden="true"
+												:title="'Hide column \'' + column.name + '\''"
+												v-show="!column.hidden"></i>
+										</transition>
+										<transition name="sort-descending" mode="out-in">
+											<i  class="fa fa-caret-right" 
+												role="button"
+												aria-hidden="true"
+												:title="'Show column \'' + column.name + '\''"
+												v-show="column.hidden"></i>
+										</transition>
+									</div>
+								</template>
+
+								<div 	class="name hint hint--bottom hint--info"
+										:data-hint="column.name"
+										:style="{ width: getMinWidth(column) }"
+										@click.exact="sortByOne(column)"
+										@click.ctrl="sortByMany(column)"
+										v-if="!column.hidden">
+									<slot :name="column.id + '-header'"
+										  :cells="getCells(items, column.id)">
+										{{column.name}}
+									</slot>
+									<template v-if="state.sortable">
+										<span v-show="column.sortingDirection">
+											<transition name="sort-ascending" mode="out-in">
+												<i v-show="column.sortingDirection == 1" 
+													class="fa fa-arrow-up arrow" 
+													aria-hidden="true"></i>
+											</transition>
+											<transition name="sort-descending" mode="out-in">
+												<i v-show="column.sortingDirection == -1"
+													class="fa fa-arrow-down arrow" 
+													aria-hidden="true"></i>
+											</transition>
+										</span>
+									</template>
+								</div>
+
+								<template v-if="state.groupable">
+									<div class="group"
+										@click="groupingColumns.indexOf(column) > -1 ? ungroup(column) : group(column)"
+										v-if="!column.hidden">
+										<i 	v-show="groupingColumns.indexOf(column) === -1" 
+											class="fa fa-object-group" 
+											aria-hidden="true"
+											:title="'Group column \'' + column.name + '\''"></i>
+										<i 	v-show="groupingColumns.indexOf(column) !== -1" 
+											class="fa fa-object-ungroup" 
+											aria-hidden="true"
+											:title="'Ungroup column \'' + column.name + '\''"></i>
+									</div>
+								</template>
+
+								<template v-if="state.filtrable">
+									<div class="filter"
+										v-if="!column.hidden">
+										<i 	class="fa fa-filter" 
+											aria-hidden="true"
+											:title="'Filter \'' + column.name + '\''"></i>
+									</div>
+
+									<div class="filter-container">
+										<div class="filter-window">
+											<select @input="selectFilter(column, $event.target.value)">
+												<option v-for="(filteringMode, filteringModeName) in filteringModes" 
+														v-if="filteringMode.type == 'all' || filteringMode.type == column.type"
+														:value="filteringModeName">
+													{{filteringModeName}}
+												</option>
+											</select>
+											<input @input="selectValueForFilter(column, $event.target.value)"></input>
+											<button @click="clearFilter(column)">Clear</button>
+										</div>
+									</div>
+								</template>
+
+								<template v-if="state.resizable">
+									<div class="mover-container"
+										v-if="!column.hidden">
+										<div class="mover"
+											@mousedown="beginResizeColumn(column, $event)"></div>
+									</div>
+								</template>
+
+							</div>
+
+						</th>
+					</tr>
+				</thead>
+
+				<tbody class="body">
+
+					<tr v-if="!hasGrouped && filter(item)" 
+						v-for="(item, i) in data.items"
+						:key="item"
+						class="lighting-row">
+						<td v-for="column in state.columns"
+							v-if="!column.hidden || i == 0"
+							:rowspan="column.hidden ? state.paging.size : 1"
+							:class="column.hidden ? 'hidden-column' : ''">
+							<slot :name="column.id + '-column'" 
+								:value="item[column.id]"
+								v-if="!column.hidden">
+								{{item[column.id]}}
+							</slot>
+							<div v-if="column.hidden" class="vertical">{{column.name}}</div>
+						</td>
+					</tr>
+
+					<template v-if="hasGrouped" 
+							v-for="(items, key) in getGroupedItemsOnCurrentPage()">
+						<tr v-for="(groupValue, i) in key.split(groupDelimeterChar)">
+							<th v-for="trash in new Array(i + 1)"></th>
+							<th :colspan="groupingColumns.length + state.columns.length - i - 1">
+								<slot :name="groupingColumns[i].id + '-group'" 
+									:cells="getCells(items, groupingColumns[i].id)"
+									:value="groupValue">
+									{{groupingColumns[i].name}}: {{groupValue}}
+								</slot>
+							</th>
+						</tr>
+						<tr v-for="(item, i) in items"
+							v-if="filter(item)"
+							class="lighting-row">
+							<template v-if="i === 0">
+								<th :rowspan="items.length" v-for="i in groupingColumns"></th>
+							</template>
+							<td v-for="column in state.columns">
+								<slot :name="column.id + '-column'" 
+									:value="item[column.id]"
+									v-if="!column.hidden">
+									{{item[column.id]}}
+								</slot>
+							</td>
+						</tr>
+					</template>
+
+				</tbody>
+			</table>
+		</div>
+		<div class="paging">
+			<button class="paging-button"
+					@click="goToPage(1)" 
+					:disabled="state.paging.current === 1">
+				<i class="fa fa-step-backward" aria-hidden="true"></i>
+			</button>
+			<button class="paging-button" 
+					@click="goToPage(state.paging.current - 1)"  
+					:disabled="state.paging.current === 1">
+				<i class="fa fa-caret-left" aria-hidden="true"></i>
+			</button>
+			<div class="paging-row">
+				<button class="paging-button" 
+						v-if="state.paging.current > maxCountOfPage"
+						@click="goToPage(Math.floor((state.paging.current - 1) / maxCountOfPage) * maxCountOfPage)">
+					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+				</button>
+				<template v-for="(item, i) in new Array(state.paging.count)">
+					<template v-if="canShowPageNumber(i)">
+						<button class="paging-button" 
+								:class="i + 1 == state.paging.current ? 'selected' : ''"
+								@click="goToPage(i + 1)">
+							{{i + 1}}
+						</button>
+					</template>
+				</template>
+				<button class="paging-button" 
+						v-if="state.paging.count != maxCountOfPage 
+							&& state.paging.current <= Math.floor(state.paging.count / maxCountOfPage) * maxCountOfPage"
+						@click="goToPage(Math.floor((state.paging.current - 1) / maxCountOfPage) * maxCountOfPage + maxCountOfPage + 1)">
+					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+				</button>
+			</div>
+			<button class="paging-button" 
+					@click="goToPage(state.paging.current + 1)"
+					:disabled="state.paging.current === state.paging.count">
+				<i class="fa fa-caret-right" aria-hidden="true"></i>
+			</button>
+			<button class="paging-button"
+					@click="goToPage(state.paging.count)"
+					:disabled="state.paging.current === state.paging.count">
+				<i class="fa fa-step-forward" aria-hidden="true"></i>
+			</button>
+			<select v-model="state.paging.size"
+					class="paging-select">
+				<option v-for="size in pageSizes" 
+						:value="size">
+					{{size == 0 ? 'All' : size}}
+				</option>
+			</select>
+			<div class="paging-select-hint">
+				items per page
+			</div>
+			<div class="paging-info">
+				{{(state.paging.current - 1) * state.paging.size + 1}} - 
+				{{ state.paging.size == 0 || state.paging.current * state.paging.size > items.length 
+					? items.length
+					: state.paging.current * state.paging.size }} 
+				of 
+				{{items.length}} 
+				items
+			</div>
+		</div>
+	</div>
+</template>
 <script src="./vue-table.js"></script>
 <style src="./vue-table.scss" lang="scss"></style>
