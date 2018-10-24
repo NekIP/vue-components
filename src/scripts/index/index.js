@@ -1,14 +1,4 @@
-import customTable from './components/vue-tabel.vue'
-import vueSelect from './components/vue-select.vue'
-import TestClass from './components/test.vue';
-
-(function () {
-    Vue.component('vue-table', customTable); 
-    Vue.component('vueSelect', vueSelect);
-    Vue.component('test', TestClass);
-})();
-
-var app = new Vue({
+let app = new Vue({
     el: '#app',
     data: {
         data: [

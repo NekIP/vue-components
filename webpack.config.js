@@ -6,9 +6,9 @@ let cssExtractor = new ExtractTextPlugin('style.css', { allChunk: true })
 const { VueLoaderPlugin } = require('vue-loader')
 
 module.exports = {
-    entry: './index.js',
+    entry: './src/all.js',
     output: {
-        path: path.resolve(__dirname, ''),
+        path: path.resolve(__dirname, 'src/dist'),
         filename: 'build.js'
     },
     module: {
@@ -17,7 +17,7 @@ module.exports = {
                 test: /\.tsx?$/,
                 loader: 'ts-loader',
                 options: {
-                    configFileName: 'tsconfig.json',
+                    configFile: 'tsconfig.json',
                     appendTsSuffixTo: [/\.vue$/]
                 }
             },
@@ -27,8 +27,7 @@ module.exports = {
                 options: {
                     loaders: {
                         scss: 'vue-style-loader!css-loader!sass-loader', // <style lang="scss">
-                        sass: 'vue-style-loader!css-loader!sass-loader?indentedSyntax', // <style lang="sass">
-                        ts: 'ts-loader'
+                        sass: 'vue-style-loader!css-loader!sass-loader?indentedSyntax' // <style lang="sass">
                     }
                 }
             },
@@ -79,7 +78,7 @@ module.exports = {
     ],
     optimization: {
         minimizer: [
-            new UglifyJsPlugin({
+            /*new UglifyJsPlugin({
                 uglifyOptions: {
                     beautify: false,
                     comments: false,
@@ -93,7 +92,7 @@ module.exports = {
                         unsafe      : true
                     }
                 }
-            })
+            })*/
         ]
     }
 };
