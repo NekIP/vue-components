@@ -97,293 +97,91 @@ Object.defineProperty(exports, "__esModule", {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
+var _vueTableFunctions = __webpack_require__(25);
+
+var _vueTableData = __webpack_require__(26);
 
 exports.default = {
 	name: 'report-table',
 	props: {
-		data: {},
-		columns: {},
-		filtrable: {},
-		sortable: {},
-		groupable: {},
+		items: {
+			type: Array,
+			required: true
+		},
+		columns: {
+			type: Array,
+			required: true
+		},
+		filtrable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
+		sortable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
+		groupable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
+		movable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
+		resizable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
+		pageable: {
+			type: Boolean,
+			default: true,
+			required: false
+		},
 		pageSizes: {
-			default: [25, 50, 100, 0]
+			type: Array,
+			default: [25, 50, 100, 0],
+			required: false
 		}
 	},
 	data: function data() {
 		return {
+			state: {
+				sortable: this.sortable,
+				sorting: [], /* { column: , direction: } */
+				filtrable: this.filtrable,
+				filtering: [], /* { column: , filter: , expected: } */
+				groupable: this.groupable,
+				grouping: [], /* column */
+				movable: this.movable,
+				moving: {
+					dragable: null,
+					dropable: null
+				},
+				resizable: this.resizable,
+				resizing: {
+					column: null,
+					mousePosition: {
+						x: null,
+						y: null
+					}
+				},
+				pageable: this.pageable,
+				paging: {
+					size: this.pageSizes[0],
+					current: 1
+				}
+			},
+			gates: {
+				filter: _vueTableFunctions.filter,
+				sort: _vueTableFunctions.sort,
+				group: _vueTableFunctions.group,
+				page: _vueTableFunctions.page
+			},
 			sorting: {
 				column: null,
 				ascending: false
@@ -514,14 +312,14 @@ exports.default = {
 			if (this.page.size == 0) {
 				return 1;
 			}
-			return Math.ceil(this.data.length / this.page.size);
+			return Math.ceil(this.items.length / this.page.size);
 		},
 		groupedData: function groupedData() {
-			var data = this.data;
+			var items = this.items;
 			var columns = this.groupingColumns;
 			var result = {};
-			for (var i = 0; i < data.length; i++) {
-				var item = data[i];
+			for (var i = 0; i < items.length; i++) {
+				var item = items[i];
 				var key = "";
 				for (var j = 0; j < columns.length; j++) {
 					var column = columns[j];
@@ -541,6 +339,17 @@ exports.default = {
 		},
 		hasGrouped: function hasGrouped() {
 			return this.groupingColumns && this.groupingColumns.length > 0;
+		},
+		rows: function rows() {
+			var result = {
+				items: this.items,
+				paging: null
+			};
+			for (var i = 0; i < this.gates; i++) {
+				var gate = this.gates[i];
+				gate(result, this.state);
+			}
+			return result;
 		}
 	},
 	methods: {
@@ -552,7 +361,7 @@ exports.default = {
 					case 'string':
 						return {
 							id: x,
-							name: self.getReadableName(x),
+							name: (0, _vueTableFunctions.getReadableName)(x),
 							type: defaultType,
 							sortable: self.sortable || false,
 							filtrable: self.filtrable || false,
@@ -563,7 +372,7 @@ exports.default = {
 						if (Array.isArray(x)) {
 							return {
 								id: x[0],
-								name: x[1] || self.getReadableName(x[0]),
+								name: x[1] || (0, _vueTableFunctions.getReadableName)(x[0]),
 								type: x[2] || defaultType,
 								sortable: self.sortable || false,
 								filtrable: self.filtrable || false,
@@ -573,7 +382,7 @@ exports.default = {
 						} else {
 							return {
 								id: x.id,
-								name: x.name || self.getReadableName(x.id),
+								name: x.name || (0, _vueTableFunctions.getReadableName)(x.id),
 								type: x.type || defaultType,
 								sortable: x.sortable || self.sortable || false,
 								filtrable: x.filtrable || self.filtrable || false,
@@ -584,29 +393,16 @@ exports.default = {
 				}
 			});
 		},
-		getReadableName: function getReadableName(name) {
-			var result = name[0].toUpperCase();
-			for (var i = 1; i < name.length; i++) {
-				var c = name[i];
-				var cUpper = c.toUpperCase();
-				if ('0123456789'.indexOf(c) === -1 && cUpper === c) {
-					result += ' ' + cUpper;
-				} else {
-					result += c;
-				}
-			}
-			return result;
-		},
 		getItemsOnCurrentPage: function getItemsOnCurrentPage() {
 			if (this.page.number > this.pageCount) {
 				this.page.number = 1;
 			}
 			if (+this.page.size == 0) {
-				return this.data;
+				return this.items;
 			}
 			var from = this.page.size * (this.page.number - 1);
 			var to = this.page.size * this.page.number;
-			return this.data.slice(from, to);
+			return this.items.slice(from, to);
 		},
 		getGroupedItemsOnCurrentPage: function getGroupedItemsOnCurrentPage() {
 			if (this.page.number > this.pageCount) {
@@ -695,7 +491,7 @@ exports.default = {
 				return getTypedValue(x[column.id], column.type) > getTypedValue(y[column.id], column.type) ? direction : getTypedValue(x[column.id], column.type) < getTypedValue(y[column.id], column.type) ? -direction : 0;
 			};
 			if (!group) {
-				this.data.sort(sortFunction);
+				this.items.sort(sortFunction);
 			} else {
 				for (var i in this.groupedData) {
 					this.groupedData[i].sort(sortFunction);
@@ -736,10 +532,10 @@ exports.default = {
 					return +value;
 			}
 		},
-		getCells: function getCells(data, key) {
+		getCells: function getCells(items, key) {
 			var result = [];
-			for (var i in data) {
-				var item = data[i];
+			for (var i in items) {
+				var item = items[i];
 				result.push(item[key]);
 			}
 			return result;
@@ -1300,7 +1096,9 @@ var render = function() {
                     1
                   )
                 ]),
-                _vm._v("\n\t\t\t" + _vm._s(groupingColumn.name) + "\n\t\t\t"),
+                _vm._v(
+                  "\r\n\t\t\t" + _vm._s(groupingColumn.name) + "\r\n\t\t\t"
+                ),
                 _c(
                   "div",
                   {
@@ -1325,7 +1123,7 @@ var render = function() {
           !_vm.hasGrouped
             ? [
                 _vm._v(
-                  "\n\t\t\tDrag a column header and drop it here to group by that column\n\t\t"
+                  "\r\n\t\t\tDrag a column header and drop it here to group by that column\r\n\t\t"
                 )
               ]
             : _vm._e()
@@ -1352,7 +1150,7 @@ var render = function() {
                       [
                         !column.hidden
                           ? _vm._t(column.id + "-footer", null, {
-                              cells: _vm.getCells(_vm.data, column.id)
+                              cells: _vm.getCells(_vm.items, column.id)
                             })
                           : _vm._e()
                       ],
@@ -1494,12 +1292,14 @@ var render = function() {
                                     column.id + "-header",
                                     [
                                       _vm._v(
-                                        "\n\t\t\t\t\t\t\t\t\t" +
+                                        "\r\n\t\t\t\t\t\t\t\t\t" +
                                           _vm._s(column.name) +
-                                          "\n\t\t\t\t\t\t\t\t"
+                                          "\r\n\t\t\t\t\t\t\t\t"
                                       )
                                     ],
-                                    { cells: _vm.getCells(_vm.data, column.id) }
+                                    {
+                                      cells: _vm.getCells(_vm.items, column.id)
+                                    }
                                   ),
                                   _vm._v(" "),
                                   _c(
@@ -1670,9 +1470,9 @@ var render = function() {
                                         },
                                         [
                                           _vm._v(
-                                            "\n\t\t\t\t\t\t\t\t\t\t\t" +
+                                            "\r\n\t\t\t\t\t\t\t\t\t\t\t" +
                                               _vm._s(filteringModeName) +
-                                              "\n\t\t\t\t\t\t\t\t\t\t"
+                                              "\r\n\t\t\t\t\t\t\t\t\t\t"
                                           )
                                         ]
                                       )
@@ -1751,9 +1551,9 @@ var render = function() {
                                         column.id + "-column",
                                         [
                                           _vm._v(
-                                            "\n\t\t\t\t\t\t\t" +
+                                            "\r\n\t\t\t\t\t\t\t" +
                                               _vm._s(item[column.id]) +
-                                              "\n\t\t\t\t\t\t"
+                                              "\r\n\t\t\t\t\t\t"
                                           )
                                         ],
                                         { value: item[column.id] }
@@ -1807,11 +1607,11 @@ var render = function() {
                                     _vm.groupingColumns[i].id + "-group",
                                     [
                                       _vm._v(
-                                        "\n\t\t\t\t\t\t\t\t" +
+                                        "\r\n\t\t\t\t\t\t\t\t" +
                                           _vm._s(_vm.groupingColumns[i].name) +
                                           ": " +
                                           _vm._s(groupValue) +
-                                          "\n\t\t\t\t\t\t\t"
+                                          "\r\n\t\t\t\t\t\t\t"
                                       )
                                     ],
                                     {
@@ -1853,9 +1653,9 @@ var render = function() {
                                               column.id + "-column",
                                               [
                                                 _vm._v(
-                                                  "\n\t\t\t\t\t\t\t\t" +
+                                                  "\r\n\t\t\t\t\t\t\t\t" +
                                                     _vm._s(item[column.id]) +
-                                                    "\n\t\t\t\t\t\t\t"
+                                                    "\r\n\t\t\t\t\t\t\t"
                                                 )
                                               ],
                                               { value: item[column.id] }
@@ -1964,7 +1764,9 @@ var render = function() {
                         },
                         [
                           _vm._v(
-                            "\n\t\t\t\t\t\t" + _vm._s(i + 1) + "\n\t\t\t\t\t"
+                            "\r\n\t\t\t\t\t\t" +
+                              _vm._s(i + 1) +
+                              "\r\n\t\t\t\t\t"
                           )
                         ]
                       )
@@ -2077,30 +1879,23 @@ var render = function() {
           _vm._l(_vm.pageSizes, function(size) {
             return _c("option", { domProps: { value: size } }, [
               _vm._v(
-                "\n\t\t\t\t" + _vm._s(size == 0 ? "All" : size) + "\n\t\t\t"
+                "\r\n\t\t\t\t" + _vm._s(size == 0 ? "All" : size) + "\r\n\t\t\t"
               )
             ])
           })
         ),
         _vm._v(" "),
         _c("div", { staticClass: "paging-select-hint" }, [
-          _vm._v("\n\t\t\titems per page\n\t\t")
+          _vm._v("\r\n\t\t\titems per page\r\n\t\t")
         ]),
         _vm._v(" "),
         _c("div", { staticClass: "paging-info" }, [
           _vm._v(
-            "\n\t\t\t" +
+            "\r\n\t\t\t" +
               _vm._s((_vm.page.number - 1) * _vm.page.size + 1) +
-              " - \n\t\t\t" +
-              _vm._s(
-                _vm.page.size == 0 ||
-                _vm.page.number * _vm.page.size > _vm.data.length
-                  ? _vm.data.length
-                  : _vm.page.number * _vm.page.size
-              ) +
-              " \n\t\t\tof \n\t\t\t" +
-              _vm._s(_vm.data.length) +
-              " \n\t\t\titems\n\t\t"
+              " - \r\n\t\t\t{{ page.size == 0 || page.number * page.size > items.length \r\n\t\t\t\t? items.length\r\n\t\t\t\t: page.number * page.size }} \r\n\t\t\tof \r\n\t\t\t" +
+              _vm._s(_vm.items.length) +
+              " \r\n\t\t\titems\r\n\t\t"
           )
         ])
       ])
@@ -5299,10 +5094,10 @@ process.umask = function () {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(0);
-/* harmony import */ var _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony reexport (unknown) */ for(var __WEBPACK_IMPORT_KEY__ in _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_0__) if(__WEBPACK_IMPORT_KEY__ !== 'default') (function(key) { __webpack_require__.d(__webpack_exports__, key, function() { return _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_0__[key]; }) }(__WEBPACK_IMPORT_KEY__));
-/* harmony import */ var _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(5);
+/* harmony import */ var _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(0);
+/* harmony import */ var _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony reexport (unknown) */ for(var __WEBPACK_IMPORT_KEY__ in _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__) if(__WEBPACK_IMPORT_KEY__ !== 'default') (function(key) { __webpack_require__.d(__webpack_exports__, key, function() { return _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0__[key]; }) }(__WEBPACK_IMPORT_KEY__));
+/* harmony import */ var _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_vue_table_html__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(5);
 /* harmony import */ var _node_modules_vue_loader_lib_runtime_component_normalizer__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(2);
 var disposed = false
 function injectStyle (context) {
@@ -5310,7 +5105,6 @@ function injectStyle (context) {
   __webpack_require__(16)
 }
 /* script */
-
 
 /* template */
 
@@ -5324,9 +5118,9 @@ var __vue_scopeId__ = null
 var __vue_module_identifier__ = null
 
 var Component = Object(_node_modules_vue_loader_lib_runtime_component_normalizer__WEBPACK_IMPORTED_MODULE_2__[/* default */ "a"])(
-  _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_0___default.a,
-  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_1__[/* render */ "a"],
-  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_table_vue__WEBPACK_IMPORTED_MODULE_1__[/* staticRenderFns */ "b"],
+  _babel_loader_vue_table_js__WEBPACK_IMPORTED_MODULE_0___default.a,
+  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_vue_table_html__WEBPACK_IMPORTED_MODULE_1__[/* render */ "a"],
+  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_0e2e5b32_hasScoped_false_optionsId_0_buble_transforms_vue_table_html__WEBPACK_IMPORTED_MODULE_1__[/* staticRenderFns */ "b"],
   __vue_template_functional__,
   __vue_styles__,
   __vue_scopeId__,
@@ -5352,7 +5146,7 @@ if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
 var add = __webpack_require__(9).default
-var update = add("4ab6f7c4", content, false, {});
+var update = add("5a7c2799", content, false, {});
 // Hot Module Replacement
 if(false) {}
 
@@ -5365,7 +5159,7 @@ exports = module.exports = __webpack_require__(8)(false);
 
 
 // module
-exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #adaeb0;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\n\t\t\t\t\t\tborder-color: #ccc;\n\t\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
+exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #adaeb0;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\r\n\t\t\t\t\tborder-color: #ccc;\r\n\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
 
 // exports
 
@@ -6676,6 +6470,257 @@ var app = new Vue({
     }
 });
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(7)))
+
+/***/ }),
+/* 25 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.getReadableName = getReadableName;
+exports.getTypedValue = getTypedValue;
+exports.sort = sort;
+exports.filter = filter;
+exports.group = group;
+exports.page = page;
+function getReadableName(name) {
+	var result = name[0].toUpperCase();
+	for (var i = 1; i < name.length; i++) {
+		var c = name[i];
+		var cUpper = c.toUpperCase();
+		if ('0123456789'.indexOf(c) === -1 && cUpper === c) {
+			result += ' ' + cUpper;
+		} else {
+			result += c;
+		}
+	}
+	return result;
+}
+
+function getTypedValue(value, type) {
+	switch (type) {
+		case VueTableColumnType.date:
+			/* TODO: use moment.js */
+			return Date.parse(value);
+		case VueTableColumnType.string:
+			return value;
+		case VueTableColumnType.number:
+			return +value;
+		case VueTableColumnType.boolean:
+			return !!value;
+	}
+}
+
+function sort(data, state) {
+	function sortComparer(item1, item2, sorting) {
+		var result = 0;
+		for (var i = 0; i < sorting.length; i++) {
+			var sortingItem = sorting[i];
+			var _ref = [item1[sortingItem.column.id], item2[sortingItem.column.id]],
+			    a = _ref[0],
+			    b = _ref[1];
+
+			result = result || this.compare(getTypedValue(a, sortingItem.column.type), getTypedValue(b, sortingItem.column.type), sortingItem.direction ? 1 : -1);
+		}
+		return 0;
+	}
+
+	function compare(a, b, direction) {
+		return a > b ? direction : a < b ? -direction : 0;
+	}
+
+	if (state.sortable) {
+		if (state.sorting && state.sorting.length > 0) {
+			var _sortComparer = this.sortComparer;
+			data.items.sort(function (item1, item2) {
+				return _sortComparer(item1, item2, state.sorting);
+			});
+		}
+	}
+}
+
+function filter(data, state) {
+	if (state.filtrable) {
+		if (state.filtering && state.filtering.length > 0) {
+			data.items = data.items.filter(function (value) {
+				var result = true;
+				for (var i = 0; i < state.filtering.length; i++) {
+					var filteringItem = state.filtering[i];
+					result = result && filteringItem.filter.predicate(value, filteringItem.expected);
+				}
+				return result;
+			});
+		}
+	}
+}
+
+function group(data, state) {
+	if (state.groupable) {
+		if (state.grouping && state.grouping.length > 0) {
+			for (var i = 0; i < data.items.length; i++) {
+				var item = data.items[i];
+				var valueOfGroupingFields = [];
+				for (var j = 0; j < state.grouping.length; j++) {
+					var groupingColumn = state.grouping[j];
+					var value = item[groupingColumn.id];
+					valueOfGroupingFields.push(value);
+				}
+				item["$_grouping_values"] = valueOfGroupingFields;
+			}
+		}
+	}
+}
+
+function page(data, state) {
+	if (state.pageable) {
+		if (state.paging) {
+			if (state.paging.size == 0) {
+				return;
+			}
+			var from = state.paging.size * (state.paging.current - 1);
+			var to = state.paging.size * state.paging.current;
+			data.items = data.items.slice(from, to);
+			data.paging = state.paging;
+		}
+	}
+}
+
+/***/ }),
+/* 26 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Column = exports.Column = function Column() {
+	_classCallCheck(this, Column);
+
+	this.id;
+	this.name;
+	this.type;
+	this.sortable;
+	this.filtrable;
+	this.groupable;
+	this.resizable;
+	this.width;
+	this.grouping;
+	this.resizing;
+	this.sorting;
+	this.filtering;
+};
+
+var columnFilters = exports.columnFilters = {
+	'eq': {
+		predicate: function predicate(curr, exp) {
+			return curr === exp;
+		},
+		title: 'Is equal to',
+		type: 'all'
+	},
+	"neq": {
+		predicate: function predicate(curr, exp) {
+			return curr !== exp;
+		},
+		title: 'Is not equal to',
+		type: 'all'
+	},
+	'null': {
+		predicate: function predicate(curr) {
+			return curr === null;
+		},
+		title: 'Is null',
+		type: 'all',
+		single: true
+	},
+	'nnull': {
+		predicate: function predicate(curr) {
+			return curr !== null;
+		},
+		title: 'Is not null',
+		type: 'all',
+		single: true
+	},
+	'greq': {
+		predicate: function predicate(curr, exp) {
+			return +curr >= +exp;
+		},
+		title: 'Is greater than or equal to',
+		type: 'number'
+	},
+	'gr': {
+		predicate: function predicate(curr, exp) {
+			return +curr > +exp;
+		},
+		title: 'Is greater than',
+		type: 'number'
+	},
+	'lseq': {
+		predicate: function predicate(curr, exp) {
+			return +curr <= +exp;
+		},
+		title: 'Is less than or equal to',
+		type: 'number'
+	},
+	'ls': {
+		predicate: function predicate(curr, exp) {
+			return +curr < +exp;
+		},
+		title: 'Is less than',
+		type: 'number'
+	},
+	'strtwth': {
+		predicate: function predicate(curr, exp) {
+			return curr.startsWith(exp);
+		},
+		title: 'Starts with',
+		type: 'string'
+	},
+	'endwth': {
+		predicate: function predicate(curr, exp) {
+			return curr.endsWith(exp);
+		},
+		title: 'Ends with',
+		type: 'string'
+	},
+	'in': {
+		predicate: function predicate(curr, exp) {
+			return curr.includes(exp);
+		},
+		title: 'Contains',
+		type: 'string'
+	},
+	'nin': {
+		predicate: function predicate(curr, exp) {
+			return !curr.includes(exp);
+		},
+		title: 'Does not contain',
+		type: 'string'
+	},
+	'empt': _defineProperty({
+		predicate: function predicate(curr, exp) {
+			return curr === "";
+		},
+		type: 'Is empty'
+	}, 'type', 'string'),
+	'nempt': _defineProperty({
+		predicate: function predicate(curr, exp) {
+			return curr !== "";
+		},
+		type: 'Is not empty'
+	}, 'type', 'string')
+};
 
 /***/ })
 /******/ ]);
