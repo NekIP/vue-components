@@ -95,13 +95,20 @@ Object.defineProperty(exports, "__esModule", {
 	value: true
 });
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
 var _vueTableFunctions = __webpack_require__(18);
 
 var _vueTableData = __webpack_require__(19);
 
+var _vClickOutside = __webpack_require__(25);
+
+var _vClickOutside2 = _interopRequireDefault(_vClickOutside);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 exports.default = {
+	directives: {
+		clickOutside: _vClickOutside2.default.directive
+	},
 	name: 'report-table',
 	props: {
 		items: {
@@ -197,129 +204,14 @@ exports.default = {
 				recalculate: 1
 			},
 			gates: [_vueTableFunctions.filter, _vueTableFunctions.sort, _vueTableFunctions.group, _vueTableFunctions.page],
-			sorting: {
-				column: null,
-				ascending: false
-			},
-			filteringColumn: {
-				id: '',
-				mode: 'eq'
-			},
-			filteringModes: {
-				'Is equal to': {
-					type: 'all',
-					handler: function handler(curr, exp) {
-						return curr === exp;
-					}
-				},
-				"Is not equal to": {
-					type: 'all',
-					handler: function handler(curr, exp) {
-						return curr === exp;
-					}
-				},
-				'Is null': {
-					type: 'all',
-					handler: function handler(curr, exp) {
-						return curr === null;
-					},
-					single: true
-				},
-				'Is not null': {
-					type: 'all',
-					handler: function handler(curr, exp) {
-						return curr !== null;
-					},
-					single: true
-				},
-				'Is greater than or equal to': {
-					type: 'number',
-					handler: function handler(curr, exp) {
-						return +curr >= +exp;
-					}
-				},
-				'Is greater than': {
-					type: 'number',
-					handler: function handler(curr, exp) {
-						return +curr > +exp;
-					}
-				},
-				'Is less than or equal to': {
-					type: 'number',
-					handler: function handler(curr, exp) {
-						return +curr <= +exp;
-					}
-				},
-				'Is less than': {
-					type: 'number',
-					handler: function handler(curr, exp) {
-						return +curr < +exp;
-					}
-				},
-				'Starts with': {
-					type: 'string',
-					handler: function handler(curr, exp) {
-						return curr.startsWith(exp);
-					}
-				},
-				'Ends with': {
-					type: 'string',
-					handler: function handler(curr, exp) {
-						return curr.endsWith(exp);
-					}
-				},
-				'Contains': {
-					type: 'string',
-					handler: function handler(curr, exp) {
-						return curr.includes(exp);
-					}
-				},
-				'Does not contain': {
-					type: 'string',
-					handler: function handler(curr, exp) {
-						return !curr.includes(exp);
-					}
-				},
-				'Is empty': {
-					type: 'string',
-					handler: function handler(curr, exp) {
-						return curr === "";
-					},
-					single: true
-				},
-				'Is not empty': {
-					type: 'string',
-					handler: function handler(curr, exp) {
-						return curr !== "";
-					},
-					single: true
-				}
-			},
-			groupingColumns: [],
-			page: {
-				size: this.pageSizes[0],
-				number: 1
-			},
-			movableColumn: {
-				dragable: null,
-				dropable: null
-			},
-			columnsInfo: null,
+			filteringModes: _vueTableData.columnFilters,
 			groupAreaName: '*group-area*',
-			groupDelimeterChar: ';',
-			resizable: {
-				column: null,
-				mousePositionX: null
-			},
 			minWidthBias: 100,
 			hiddenColumnSize: 20,
-			maxCountOfPage: 5,
-			hints: {} // show hint
-			/*columnsCash: null*/
+			maxCountOfPage: 5
 		};
 	},
 	created: function created() {
-		this.columnsInfo = this.getColumnsInfo();
 		this.state.columns = (0, _vueTableFunctions.getColumns)(this.columns, this.sortable, this.filtrable, this.groupable, this.resizable, this.movable, this.hidable);
 	},
 
@@ -332,35 +224,6 @@ exports.default = {
 		}
 	},
 	computed: {
-		pageCount: function pageCount() {
-			if (this.page.size == 0) {
-				return 1;
-			}
-			return Math.ceil(this.items.length / this.page.size);
-		},
-		groupedData: function groupedData() {
-			var items = this.items;
-			var columns = this.groupingColumns;
-			var result = {};
-			for (var i = 0; i < items.length; i++) {
-				var item = items[i];
-				var key = "";
-				for (var j = 0; j < columns.length; j++) {
-					var column = columns[j];
-					var field = item[column.id];
-					if (j != columns.length - 1) {
-						key += '' + field + this.groupDelimeterChar;
-					} else {
-						key += '' + field;
-					}
-				}
-				if (!result[key]) {
-					result[key] = [];
-				}
-				result[key].push(item);
-			}
-			return result;
-		},
 		hasGrouped: function hasGrouped() {
 			return this.state.groupingColumns && this.state.groupingColumns.length > 0;
 		},
@@ -458,13 +321,52 @@ exports.default = {
 
 
 		/* FILTERING */
-		addColumForFiltering: function addColumForFiltering(column, filter) {
-			column.filtering = filter;
-			this.state.filtering.push(column);
+		addColumForFiltering: function addColumForFiltering(column) {
+			if (column.filtering && !column.filtering.enabled) {
+				column.filtering.enabled = true;
+				this.state.filteringColumns.push(column);
+			}
+			this.forceUpdate();
 		},
 		removeColumForFiltering: function removeColumForFiltering(column) {
-			column.filtering = undefined;
-			(0, _vueTableFunctions.removeItemInArray)(this.state.filtering, column);
+			if (column.filtering) {
+				column.filtering.enabled = false;
+				(0, _vueTableFunctions.removeItemInArray)(this.state.filteringColumns, column, function (x) {
+					return x;
+				});
+				this.forceUpdate();
+			}
+		},
+		selectFilter: function selectFilter(column, mode) {
+			column.filtering.filter = this.filteringModes[mode];
+			if (column.filtering.filter.single || column.filtering.expected) {
+				this.addColumForFiltering(column);
+			}
+		},
+		selectValueForFilter: function selectValueForFilter(column, value) {
+			if (column.filtering) {
+				column.filtering.expected = value;
+				if (value) {
+					this.addColumForFiltering(column);
+				} else {
+					this.removeColumForFiltering(column);
+				}
+			}
+		},
+		showFilterForm: function showFilterForm(column) {
+			if (!column.filtering) {
+				column.filtering = {
+					filter: this.filteringModes.eq,
+					expected: '',
+					enabled: false
+				};
+			}
+			column.showFilterForm = true;
+			this.forceUpdate();
+		},
+		hideFilterForm: function hideFilterForm(column) {
+			column.showFilterForm = false;
+			this.forceUpdate();
 		},
 
 
@@ -524,11 +426,11 @@ exports.default = {
 		/* HIDDING */
 		hideColumn: function hideColumn(column, event) {
 			column.hidden = true;
-			this.$forceUpdate();
+			this.forceUpdate();
 		},
 		showColumn: function showColumn(column, event) {
 			column.hidden = false;
-			this.$forceUpdate();
+			this.forceUpdate();
 		},
 
 
@@ -539,6 +441,9 @@ exports.default = {
 				return a + (!b.hidden ? b.width || b.name.length * 18 + 50 : self.hiddenColumnSize);
 			}, 0);
 			return result;
+		},
+		getMinWidth: function getMinWidth(column) {
+			return column.name.length * 6 + 10;
 		},
 
 
@@ -573,126 +478,14 @@ exports.default = {
 				}
 				this.state.moving.dragable = null;
 				this.state.moving.dropable = null;
-				this.$forceUpdate();
+				this.forceUpdate();
 			} else {
 				event.preventDefault();
 			}
 		},
-		getColumnsInfo: function getColumnsInfo() {
-			var defaultType = 'string';
-			var self = this;
-			return this.columns.map(function (x) {
-				switch (typeof x === 'undefined' ? 'undefined' : _typeof(x)) {
-					case 'string':
-						return {
-							id: x,
-							name: (0, _vueTableFunctions.getReadableName)(x),
-							type: defaultType,
-							sortable: self.sortable || false,
-							filtrable: self.filtrable || false,
-							groupable: self.groupable || false,
-							width: undefined
-						};
-					case 'object':
-						if (Array.isArray(x)) {
-							return {
-								id: x[0],
-								name: x[1] || (0, _vueTableFunctions.getReadableName)(x[0]),
-								type: x[2] || defaultType,
-								sortable: self.sortable || false,
-								filtrable: self.filtrable || false,
-								groupable: self.groupable || false,
-								width: undefined
-							};
-						} else {
-							return {
-								id: x.id,
-								name: x.name || (0, _vueTableFunctions.getReadableName)(x.id),
-								type: x.type || defaultType,
-								sortable: x.sortable || self.sortable || false,
-								filtrable: x.filtrable || self.filtrable || false,
-								groupable: x.groupable || self.groupable || false,
-								width: x.width
-							};
-						}
-				}
-			});
-		},
-		getItemsOnCurrentPage: function getItemsOnCurrentPage() {
-			if (this.page.number > this.pageCount) {
-				this.page.number = 1;
-			}
-			if (+this.page.size == 0) {
-				return this.items;
-			}
-			var from = this.page.size * (this.page.number - 1);
-			var to = this.page.size * this.page.number;
-			return this.items.slice(from, to);
-		},
-		getGroupedItemsOnCurrentPage: function getGroupedItemsOnCurrentPage() {
-			if (this.page.number > this.pageCount) {
-				this.page.number = 1;
-			}
-			if (+this.page.size == 0) {
-				return this.groupedData;
-			}
-			var result = {};
-			var num = 0;
-			var from = this.page.size * (this.page.number - 1);
-			var to = this.page.size * this.page.number;
-			for (var key in this.groupedData) {
-				for (var i in this.groupedData[key]) {
-					if (from <= num && num < to) {
-						if (!result[key]) {
-							result[key] = [];
-						}
-						result[key].push(this.groupedData[key][i]);
-					}
-					num++;
-				}
-			}
-			return result;
-		},
-		nextPage: function nextPage() {
-			if (this.page.number < this.pageCount) {
-				this.page.number++;
-			}
-		},
-		prevPage: function prevPage() {
-			if (this.page.number > 1) {
-				this.page.number--;
-			}
-		},
-		lastPage: function lastPage() {
-			this.page.number = this.pageCount;
-		},
-		firstPage: function firstPage() {
-			this.page.number = 1;
-		},
-		group: function group(column) {
-			if (this.groupingColumns.indexOf(column) == -1) {
-				this.groupingColumns.push(column);
-				this.sorting.column = null;
-				this.sorting.ascending = false;
-			}
-		},
-		ungroup: function ungroup(column) {
-			var i = this.groupingColumns.indexOf(column);
-			this.groupingColumns.splice(i, 1);
-			this.sorting.column = null;
-			this.sorting.ascending = false;
-		},
-		getTypedValue: function getTypedValue(value, type) {
-			switch (type) {
-				case 'date':
-					/* TODO: use moment.js */
-					return Date.parse(value);
-				case 'string':
-					return value;
-				case 'number':
-					return +value;
-			}
-		},
+
+
+		/* OTHER */
 		getCells: function getCells(items, key) {
 			var result = [];
 			for (var i in items) {
@@ -701,48 +494,9 @@ exports.default = {
 			}
 			return result;
 		},
-		getMinWidth: function getMinWidth(column) {
-			return column.name.length * 6 + 10;
-		},
-		showHint: function showHint(column) {
-			this.hints[column.id] = true;
-			this.$forceUpdate();
-		},
-		hideHint: function hideHint(column) {
-			this.hints[column.id] = false;
-			this.$forceUpdate();
-		},
-		selectFilter: function selectFilter(column, mode) {
-			column.filter = this.filteringModes[mode];
-			if (column.filter.single || column.filtrableValue) {
-				this.$forceUpdate();
-			}
-		},
-		selectValueForFilter: function selectValueForFilter(column, filtrableValue) {
-			if (column.filter) {
-				column.filtrableValue = filtrableValue;
-				this.forceUpdate();
-			}
-		},
 		forceUpdate: function forceUpdate() {
 			this.state.recalculate = -this.state.recalculate;
 			this.$forceUpdate();
-		},
-		filter: function filter(item) {
-			for (var i = 0; i < this.columnsInfo.length; i++) {
-				var column = this.columnsInfo[i];
-				if (column.filter) {
-					if (column.filter.handler) {
-						return column.filter.handler(this.getTypedValue(item[column.id], column.type), this.getTypedValue(column.filtrableValue, column.type));
-					}
-				}
-			}
-			return true;
-		},
-		clearFilter: function clearFilter(column) {
-			column.filter = null;
-			column.filtrableValue = null;
-			this.forceUpdate();
 		}
 	}
 };
@@ -1681,93 +1435,129 @@ var render = function() {
                             _vm.state.filtrable
                               ? [
                                   !column.hidden
-                                    ? _c("div", { staticClass: "filter" }, [
-                                        _c("i", {
-                                          staticClass: "fa fa-filter",
+                                    ? _c(
+                                        "div",
+                                        {
+                                          staticClass: "filter",
+                                          class:
+                                            column.filtering &&
+                                            column.filtering.enabled
+                                              ? "filter-enabled"
+                                              : "",
                                           attrs: {
-                                            "aria-hidden": "true",
                                             title:
                                               "Filter '" + column.name + "'"
+                                          },
+                                          on: {
+                                            click: function($event) {
+                                              _vm.showFilterForm(column)
+                                            }
                                           }
-                                        })
-                                      ])
+                                        },
+                                        [
+                                          _c("i", {
+                                            staticClass: "fa fa-filter",
+                                            attrs: { "aria-hidden": "true" }
+                                          })
+                                        ]
+                                      )
                                     : _vm._e(),
                                   _vm._v(" "),
-                                  _c(
-                                    "div",
-                                    { staticClass: "filter-container" },
-                                    [
-                                      _c(
+                                  column.showFilterForm
+                                    ? _c(
                                         "div",
-                                        { staticClass: "filter-window" },
+                                        {
+                                          directives: [
+                                            {
+                                              name: "click-outside",
+                                              rawName: "v-click-outside",
+                                              value: function(a, b) {
+                                                _vm.hideFilterForm(column)
+                                              },
+                                              expression:
+                                                "function (a, b) { hideFilterForm(column) }"
+                                            }
+                                          ],
+                                          staticClass: "filter-container"
+                                        },
                                         [
                                           _c(
-                                            "select",
-                                            {
-                                              on: {
-                                                input: function($event) {
-                                                  _vm.selectFilter(
-                                                    column,
-                                                    $event.target.value
-                                                  )
-                                                }
-                                              }
-                                            },
-                                            _vm._l(_vm.filteringModes, function(
-                                              filteringMode,
-                                              filteringModeName
-                                            ) {
-                                              return filteringMode.type ==
-                                                "all" ||
-                                                filteringMode.type ==
-                                                  column.type
-                                                ? _c(
-                                                    "option",
-                                                    {
-                                                      domProps: {
-                                                        value: filteringModeName
-                                                      }
-                                                    },
-                                                    [
-                                                      _vm._v(
-                                                        "\n\t\t\t\t\t\t\t\t\t\t\t\t" +
-                                                          _vm._s(
-                                                            filteringModeName
-                                                          ) +
-                                                          "\n\t\t\t\t\t\t\t\t\t\t\t"
+                                            "div",
+                                            { staticClass: "filter-window" },
+                                            [
+                                              _c(
+                                                "select",
+                                                {
+                                                  on: {
+                                                    input: function($event) {
+                                                      _vm.selectFilter(
+                                                        column,
+                                                        $event.target.value
                                                       )
-                                                    ]
-                                                  )
-                                                : _vm._e()
-                                            })
-                                          ),
-                                          _vm._v(" "),
-                                          _c("input", {
-                                            on: {
-                                              input: function($event) {
-                                                _vm.selectValueForFilter(
-                                                  column,
-                                                  $event.target.value
+                                                    }
+                                                  }
+                                                },
+                                                _vm._l(
+                                                  _vm.filteringModes,
+                                                  function(
+                                                    filteringMode,
+                                                    filteringModeName
+                                                  ) {
+                                                    return filteringMode.type ==
+                                                      "all" ||
+                                                      filteringMode.type ==
+                                                        column.type
+                                                      ? _c(
+                                                          "option",
+                                                          {
+                                                            domProps: {
+                                                              value: filteringModeName
+                                                            }
+                                                          },
+                                                          [
+                                                            _vm._v(
+                                                              "\n\t\t\t\t\t\t\t\t\t\t\t\t" +
+                                                                _vm._s(
+                                                                  filteringMode.title
+                                                                ) +
+                                                                "\n\t\t\t\t\t\t\t\t\t\t\t"
+                                                            )
+                                                          ]
+                                                        )
+                                                      : _vm._e()
+                                                  }
                                                 )
-                                              }
-                                            }
-                                          }),
-                                          _vm._v(" "),
-                                          _c(
-                                            "button",
-                                            {
-                                              on: {
-                                                click: function($event) {
-                                                  _vm.clearFilter(column)
+                                              ),
+                                              _vm._v(" "),
+                                              _c("input", {
+                                                on: {
+                                                  input: function($event) {
+                                                    _vm.selectValueForFilter(
+                                                      column,
+                                                      $event.target.value
+                                                    )
+                                                  }
                                                 }
-                                              }
-                                            },
-                                            [_vm._v("Clear")]
+                                              }),
+                                              _vm._v(" "),
+                                              _c(
+                                                "button",
+                                                {
+                                                  on: {
+                                                    click: function($event) {
+                                                      _vm.removeColumForFiltering(
+                                                        column
+                                                      )
+                                                    }
+                                                  }
+                                                },
+                                                [_vm._v("Clear")]
+                                              )
+                                            ]
                                           )
                                         ]
                                       )
-                                    ]
-                                  )
+                                    : _vm._e()
                                 ]
                               : _vm._e(),
                             _vm._v(" "),
@@ -5512,7 +5302,7 @@ exports = module.exports = __webpack_require__(8)(false);
 
 
 // module
-exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #3349a7;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\r\n\t\t\t\t\tborder-color: #ccc;\r\n\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
+exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-enabled {\n            color: #ff9c4a;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #3349a7;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\r\n\t\t\t\t\tborder-color: #ccc;\r\n\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
 
 // exports
 
@@ -5673,8 +5463,8 @@ function filter(data, state) {
 		data.items = data.items.filter(function (value) {
 			var result = true;
 			for (var i = 0; i < state.filteringColumns.length; i++) {
-				var filteringItem = state.filteringColumns[i];
-				result = result && filteringItem.filter.predicate(value, filteringItem.expected);
+				var filteringColumn = state.filteringColumns[i];
+				result = result && filteringColumn.filtering.filter.predicate(getTypedValue(value[filteringColumn.id], filteringColumn.type), getTypedValue(filteringColumn.filtering.expected, filteringColumn.type));
 			}
 			return result;
 		});

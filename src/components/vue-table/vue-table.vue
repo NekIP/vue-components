@@ -132,23 +132,26 @@
 
 								<template v-if="state.filtrable">
 									<div class="filter"
-										v-if="!column.hidden">
-										<i 	class="fa fa-filter" 
-											aria-hidden="true"
-											:title="'Filter \'' + column.name + '\''"></i>
+										v-if="!column.hidden"
+										@click="showFilterForm(column)"
+										:class="column.filtering && column.filtering.enabled ? 'filter-enabled' : ''"
+										:title="'Filter \'' + column.name + '\''">
+										<i class="fa fa-filter" aria-hidden="true"></i>
 									</div>
 
-									<div class="filter-container">
+									<div class="filter-container" 
+										v-if="column.showFilterForm"
+										v-click-outside="function (a, b) { hideFilterForm(column) }">
 										<div class="filter-window">
 											<select @input="selectFilter(column, $event.target.value)">
 												<option v-for="(filteringMode, filteringModeName) in filteringModes" 
 														v-if="filteringMode.type == 'all' || filteringMode.type == column.type"
 														:value="filteringModeName">
-													{{filteringModeName}}
+													{{filteringMode.title}}
 												</option>
 											</select>
 											<input @input="selectValueForFilter(column, $event.target.value)"></input>
-											<button @click="clearFilter(column)">Clear</button>
+											<button @click="removeColumForFiltering(column)">Clear</button>
 										</div>
 									</div>
 								</template>

@@ -1,7 +1,11 @@
 import { getReadableName, removeItemInArray, indexOfItemInArray, getColumns, sort, group, filter, page } from './vue-table-functions'
 import { Column, columnFilters } from './vue-table-data';
+import vClickOutside from 'v-click-outside'
 
 export default {
+	directives: {
+        clickOutside: vClickOutside.directive
+    },
 	name: 'report-table',
 	props: {
 		items: {
@@ -102,101 +106,14 @@ export default {
 				group,
 				page
 			],
-			sorting: {
-				column: null,
-				ascending: false
-			},
-			filteringColumn: {
-				id: '',
-				mode: 'eq'
-			},
-			filteringModes: {
-				'Is equal to': {
-					type: 'all', 
-					handler: (curr, exp) => curr === exp 
-				},
-				"Is not equal to": { 
-					type: 'all', 
-					handler: (curr, exp) => curr === exp 
-				},
-				'Is null': { 
-					type: 'all', 
-					handler: (curr, exp) => curr === null, 
-					single: true 
-				},
-				'Is not null': { 
-					type: 'all', 
-					handler: (curr, exp) => curr !== null, 
-					single: true 
-				},
-				'Is greater than or equal to': { 
-					type: 'number', 
-					handler: (curr, exp) => +curr >= +exp 
-				},
-				'Is greater than': { 
-					type: 'number', 
-					handler: (curr, exp) => +curr > +exp 
-				},
-				'Is less than or equal to': { 
-					type: 'number',
-					handler: (curr, exp) => +curr <= +exp 
-				},
-				'Is less than': { 
-					type: 'number', 
-					handler: (curr, exp) => +curr < +exp 
-				},
-				'Starts with': { 
-					type: 'string', 
-					handler: (curr, exp) => curr.startsWith(exp) 
-				},
-				'Ends with': { 
-					type: 'string', 
-					handler: (curr, exp) => curr.endsWith(exp) 
-				},
-				'Contains': { 
-					type: 'string', 
-					handler: (curr, exp) => curr.includes(exp) 
-				},
-				'Does not contain': { 
-					type: 'string', 
-					handler: (curr, exp) => !curr.includes(exp) 
-				},
-				'Is empty': { 
-					type: 'string', 
-					handler: (curr, exp) => curr === "", 
-					single: true 
-				},
-				'Is not empty': {
-					type: 'string', 
-					handler: (curr, exp) => curr !== "", 
-					single: true 
-				},
-			},
-			groupingColumns: [],
-			page: {
-				size: this.pageSizes[0],
-				number: 1
-			},
-			movableColumn: {
-				dragable: null,
-				dropable: null
-			},
-			columnsInfo: null,
+			filteringModes: columnFilters,
 			groupAreaName: '*group-area*',
-			groupDelimeterChar: ';',
-			resizable: {
-				column: null,
-				mousePositionX: null
-			},
 			minWidthBias: 100,
 			hiddenColumnSize: 20,
 			maxCountOfPage: 5,
-			hints: {}	// show hint
-			/*columnsCash: null*/
 		}
 	},
 	created () {
-		this.columnsInfo = this.getColumnsInfo();
 		this.state.columns = getColumns(
 			this.columns, 
 			this.sortable,
@@ -215,36 +132,6 @@ export default {
 		}
 	},
 	computed: {
-		pageCount() {
-			if (this.page.size == 0) {
-				return 1;
-			}
-			return Math.ceil(this.items.length / this.page.size);
-		},
-		groupedData() {
-			let items = this.items;
-			let columns = this.groupingColumns;
-			let result = {};
-			for (let i = 0; i < items.length; i++) {
-				let item = items[i];
-				let key = "";
-				for (let j = 0; j < columns.length; j++) {
-					let column = columns[j];
-					let field = item[column.id];
-					if (j != columns.length - 1) {
-						key += '' + field + this.groupDelimeterChar;
-					}
-					else {
-						key += '' + field;
-					}
-				}
-				if (!result[key]) {
-					result[key] = [];
-				}
-				result[key].push(item);
-			}
-			return result;
-		},
 		hasGrouped() {
 			return this.state.groupingColumns && this.state.groupingColumns.length > 0;
 		},
@@ -342,14 +229,56 @@ export default {
 		},
 
 /* FILTERING */
-		addColumForFiltering(column, filter) {
-			column.filtering = filter;
-			this.state.filtering.push(column);
+		addColumForFiltering(column) {
+			if (column.filtering && !column.filtering.enabled) {
+				column.filtering.enabled = true;
+				this.state.filteringColumns.push(column);
+			}
+			this.forceUpdate();
 		},
 
 		removeColumForFiltering(column) {
-			column.filtering = undefined;
-			removeItemInArray(this.state.filtering, column);
+			if (column.filtering) {
+				column.filtering.enabled = false;
+				removeItemInArray(this.state.filteringColumns, column, x => x);
+				this.forceUpdate();
+			}
+		},
+
+		selectFilter(column, mode) {
+			column.filtering.filter = this.filteringModes[mode];
+			if (column.filtering.filter.single || column.filtering.expected) {
+				this.addColumForFiltering(column);
+			}
+		},
+
+		selectValueForFilter(column, value) {
+			if (column.filtering) {
+				column.filtering.expected = value;
+				if (value) {
+					this.addColumForFiltering(column);
+				}
+				else {
+					this.removeColumForFiltering(column);
+				}
+			}
+		},
+
+		showFilterForm(column) {
+			if (!column.filtering) {
+				column.filtering = {
+					filter: this.filteringModes.eq,
+					expected: '',
+					enabled: false
+				};
+			}
+			column.showFilterForm = true;
+			this.forceUpdate();
+		},
+
+		hideFilterForm(column) {
+			column.showFilterForm = false;
+			this.forceUpdate();
 		},
 
 /* PAGING */
@@ -409,12 +338,12 @@ export default {
 /* HIDDING */
 		hideColumn(column, event) {
 			column.hidden = true;
-			this.$forceUpdate();
+			this.forceUpdate();
 		},
 
 		showColumn(column, event) {
 			column.hidden = false;
-			this.$forceUpdate();
+			this.forceUpdate();
 		},
 
 /* SIZES */
@@ -427,6 +356,10 @@ export default {
 						: self.hiddenColumnSize), 
 				0);
 			return result;
+		},
+
+		getMinWidth(column) {
+			return column.name.length * 6 + 10;
 		},
 
 /* DRAG AND DROP */
@@ -465,143 +398,14 @@ export default {
 				}
 				this.state.moving.dragable = null;
 				this.state.moving.dropable = null;
-				this.$forceUpdate();
+				this.forceUpdate();
 			}
 			else {
 				event.preventDefault();
 			}
 		},
 
-
-
-
-
-		getColumnsInfo() {
-			const defaultType = 'string';
-			let self = this;
-			return this.columns.map(x => {
-				switch (typeof(x)) {
-					case 'string':
-						return {
-							id: x,
-							name: getReadableName(x),
-							type: defaultType,
-							sortable: self.sortable || false,
-							filtrable: self.filtrable || false,
-							groupable: self.groupable || false,
-							width: undefined
-						}
-					case 'object':
-						if (Array.isArray(x)){
-							return {
-								id: x[0],
-								name: x[1] || getReadableName(x[0]),
-								type: x[2] || defaultType,
-								sortable: self.sortable || false,
-								filtrable: self.filtrable || false,
-								groupable: self.groupable || false,
-								width: undefined
-							}
-						}
-						else {
-							return {
-								id: x.id,
-								name: x.name || getReadableName(x.id),
-								type: x.type || defaultType,
-								sortable: x.sortable ||  self.sortable || false,
-								filtrable: x.filtrable ||  self.filtrable || false,
-								groupable: x.groupable || self.groupable || false,
-								width: x.width
-							}
-						}
-				}
-			})
-		},
-
-		getItemsOnCurrentPage() {
-			if (this.page.number > this.pageCount) {
-				this.page.number = 1;
-			}
-			if (+this.page.size == 0) {
-				return this.items;
-			}
-			let from = this.page.size * (this.page.number - 1);
-			let to = this.page.size * this.page.number;
-			return this.items.slice(from, to);
-		},
-
-		getGroupedItemsOnCurrentPage() {
-			if (this.page.number > this.pageCount) {
-				this.page.number = 1;
-			}
-			if (+this.page.size == 0) {
-				return this.groupedData;
-			}
-			let result = {};
-			let num = 0;
-			let from = this.page.size * (this.page.number - 1);
-			let to = this.page.size * this.page.number;
-			for (let key in this.groupedData) {
-				for (let i in this.groupedData[key]) {
-					if (from <= num && num < to) {
-						if (!result[key]) {
-							result[key] = []
-						}
-						result[key].push(this.groupedData[key][i]);
-					}
-					num++;
-				}
-			}
-			return result;
-		},
-
-		nextPage() {
-			if (this.page.number < this.pageCount) {
-				this.page.number++;
-			}
-		},
-
-		prevPage() {
-			if (this.page.number > 1) {
-				this.page.number--;
-			}
-		},
-
-		lastPage() {
-			this.page.number = this.pageCount;
-		},
-
-		firstPage() {
-			this.page.number = 1;
-		},
-
-		group(column) {
-			if (this.groupingColumns.indexOf(column) == -1) {
-				this.groupingColumns.push(column);
-				this.sorting.column = null;
-				this.sorting.ascending = false;
-			}
-		},
-
-		ungroup(column) {
-			let i = this.groupingColumns.indexOf(column);
-			this.groupingColumns.splice(i, 1);
-			this.sorting.column = null;
-			this.sorting.ascending = false;
-		},
-
-		getTypedValue(value, type) {
-			switch (type) {
-				case 'date':
-					/* TODO: use moment.js */
-					return Date.parse(value);
-				case 'string':
-					return value;
-				case 'number':
-					return +value;
-			}
-		},
-
+/* OTHER */
 		getCells(items, key) {
 			let result = [];
 			for (let i in items) {
@@ -611,57 +415,9 @@ export default {
 			return result;
 		},
 
-		getMinWidth(column) {
-			return column.name.length * 6 + 10;
-		},
-
-		showHint(column) {
-			this.hints[column.id] = true;
-			this.$forceUpdate();
-		},
-
-		hideHint(column) {
-			this.hints[column.id] = false;
-			this.$forceUpdate();
-		},
-
-		selectFilter(column, mode) {
-			column.filter = this.filteringModes[mode];
-			if (column.filter.single || column.filtrableValue) {
-				this.$forceUpdate();
-			}
-		},
-
-		selectValueForFilter(column, filtrableValue) {
-			if (column.filter) {
-				column.filtrableValue = filtrableValue;
-				this.forceUpdate();
-			}
-		},
-
 		forceUpdate() {
 			this.state.recalculate = -this.state.recalculate;
 			this.$forceUpdate();
-		},
-
-		filter(item) {
-			for (let i = 0; i < this.columnsInfo.length; i++) {
-				let column = this.columnsInfo[i];
-				if (column.filter) {
-					if (column.filter.handler) {
-						return column.filter.handler(
-							this.getTypedValue(item[column.id], column.type), 
-							this.getTypedValue(column.filtrableValue, column.type));	
-					}
-				}
-			}
-			return true;
-		},
-
-		clearFilter(column) {
-			column.filter = null;
-			column.filtrableValue = null;
-			this.forceUpdate();
 		}
 	}
 }

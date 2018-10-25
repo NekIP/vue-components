@@ -141,11 +141,14 @@ export function filter(data, state) {
 		data.items = data.items.filter(value => {
 			let result = true;
 			for (let i = 0; i < state.filteringColumns.length; i++) {
-				let filteringItem = state.filteringColumns[i];
+				let filteringColumn = state.filteringColumns[i];
 				result = result && 
-					filteringItem
+					filteringColumn
+						.filtering
 						.filter
-						.predicate(value, filteringItem.expected);
+						.predicate(
+							getTypedValue(value[filteringColumn.id], filteringColumn.type), 
+							getTypedValue(filteringColumn.filtering.expected, filteringColumn.type));
 			}
 			return result;
 		})
