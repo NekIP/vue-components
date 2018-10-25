@@ -131,59 +131,51 @@ export function sort(data, state) {
 				: 0;
 	}
 
-	if (state.sortable) {
-		if (state.sortingColumns && state.sortingColumns.length > 0) {
-			data.items.sort((item1, item2) => sortComparer(item1, item2, state.sortingColumns));
-		}
+	if (state.sortingColumns && state.sortingColumns.length > 0) {
+		data.items.sort((item1, item2) => sortComparer(item1, item2, state.sortingColumns));
 	}
 }
 
 export function filter(data, state) {
-	if (state.filtrable) {
-		if (state.filteringColumns && state.filteringColumns.length > 0) {
-			data.items = data.items.filter(value => {
-				let result = true;
-				for (let i = 0; i < state.filteringColumns.length; i++) {
-					let filteringItem = state.filteringColumns[i];
-					result = result && 
-						filteringItem
-							.filter
-							.predicate(value, filteringItem.expected);
-				}
-				return result;
-			})
-		}
+	if (state.filteringColumns && state.filteringColumns.length > 0) {
+		data.items = data.items.filter(value => {
+			let result = true;
+			for (let i = 0; i < state.filteringColumns.length; i++) {
+				let filteringItem = state.filteringColumns[i];
+				result = result && 
+					filteringItem
+						.filter
+						.predicate(value, filteringItem.expected);
+			}
+			return result;
+		})
 	}
 }
 
 export function group(data, state) {
-	if (state.groupable) {
-		if (state.groupingColumns && state.groupingColumns.length > 0) {
-			for (let i = 0; i < data.items.length; i++) {
-				let item = data.items[i];
-				let valueOfGroupingFields = [];
-				for (let j = 0; j < state.groupingColumns.length; j++) {
-					let groupingColumn = state.groupingColumns[j];
-					let value = item[groupingColumn.id];
-					valueOfGroupingFields.push(value);
-				}
-				item.$_grouping_values = valueOfGroupingFields;
+	if (state.groupingColumns && state.groupingColumns.length > 0) {
+		for (let i = 0; i < data.items.length; i++) {
+			let item = data.items[i];
+			let valueOfGroupingFields = [];
+			for (let j = 0; j < state.groupingColumns.length; j++) {
+				let groupingColumn = state.groupingColumns[j];
+				let value = item[groupingColumn.id];
+				valueOfGroupingFields.push(value);
 			}
+			item.$_grouping_values = valueOfGroupingFields;
 		}
 	}
 }
 
 export function page(data, state) {
-	if (state.pageable) {
-		if (state.paging) {
-			if (state.paging.size == 0) {
-				return;
-			}
-			let from = state.paging.size * (state.paging.current - 1);
-			let to = state.paging.size * state.paging.current;
-			data.items = data.items.slice(from, to);
-			data.paging = state.paging;
+	if (state.paging) {
+		if (state.paging.size == 0) {
+			return;
 		}
+		let from = state.paging.size * (state.paging.current - 1);
+		let to = state.paging.size * state.paging.current;
+		data.items = data.items.slice(from, to);
+		data.paging = state.paging;
 	}
 }
 

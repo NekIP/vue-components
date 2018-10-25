@@ -33,6 +33,7 @@ let app = new Vue({
                 url: 'test.com'
             },
         ],
+        pageSizes: [100, 200, 500],
         columns: [
             { id: 'mid', name: 'Merchant Id', type: 'number' },
             { id: 'date', type: 'date' },

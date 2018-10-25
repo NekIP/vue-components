@@ -58,9 +58,9 @@
 							:key="column.id"
 							class="column"
 							draggable="true"
-							@dragstart="columnDragStart(column, $event)"
-							@dragenter="columnDragEnter(column, $event)"
-							@dragend="columnDragEnd($event)"
+							@dragstart="state.groupable ? columnDragStart(column, $event) : 0"
+							@dragenter="state.groupable ? columnDragEnter(column, $event) : 0"
+							@dragend="state.groupable ? columnDragEnd($event) : 0"
 							:style="{ 
 								'min-width': getMinWidth(column) + minWidthBias, 
 								width: column.hidden 
@@ -92,8 +92,8 @@
 								<div 	class="name hint hint--bottom hint--info"
 										:data-hint="column.name"
 										:style="{ width: getMinWidth(column) }"
-										@click.exact="sortByOne(column)"
-										@click.ctrl="sortByMany(column)"
+										@click.exact="state.sortable ? sortByOne(column) : 0"
+										@click.ctrl="state.sortable ? sortByMany(column) : 0"
 										v-if="!column.hidden">
 									<slot :name="column.id + '-header'"
 										  :cells="getCells(items, column.id)">
@@ -117,7 +117,7 @@
 
 								<template v-if="state.groupable">
 									<div class="group"
-										@click="column.grouping > -1 ? removeColumForGrouping(column) : addColumForGrouping(column)"
+										@click="column.grouping ? removeColumForGrouping(column) : addColumForGrouping(column)"
 										v-if="!column.hidden">
 										<i 	v-show="!column.grouping" 
 											class="fa fa-object-group" 

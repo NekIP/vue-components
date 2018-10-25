@@ -49,7 +49,9 @@ export default {
 		},
 		pageSizes: {
 			type: Array,
-			default: [25, 50, 100, 0],
+			default: function () {
+				return [25, 50, 100, 0];
+			},
 			required: false
 		}
 	},
@@ -260,22 +262,27 @@ export default {
 		}
 	},
 	methods: {
+/* SORTING */
 		sortByMany(column) {
-			if (!column.sortingDirection) {
-				column.sortingDirection = 1;
-				this.state.sortingColumns.push(column);
-			}
-			else {
-				column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
-				this.forceUpdate();
+			if (this.state.sortable || this.state.groupable) {
+				if (!column.sortingDirection) {
+					column.sortingDirection = 1;
+					this.state.sortingColumns.push(column);
+				}
+				else {
+					column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
+					this.forceUpdate();
+				}
 			}
 		},
 
 		sortByOne(column) {
-			if (!column.sortingDirection) {
-				this.cleanSorting();
+			if (this.state.sortable || this.state.groupable) {
+				if (!column.sortingDirection) {
+					this.cleanSorting();
+				}
+				this.sortByMany(column);
 			}
-			this.sortByMany(column);
 		},
 
 		cleanSorting() {
@@ -293,41 +300,14 @@ export default {
 			removeItemInArray(this.state.sortingColumns, column, x => x);
 		},
 
+/* GROUPING */
 		addColumForGrouping(column) {
-			this.cleanSorting();
-			this.sortByMany(column);
-			column.grouping = true;
-			this.state.groupingColumns.push(column);
-		},
-
-		removeColumForGrouping(column) {
-			column.grouping = false;
-			removeItemInArray(this.state.groupingColumns, column, x => x);
-		},
-
-		addColumForFiltering(column, filter) {
-			column.filtering = filter;
-			this.state.filtering.push(column);
-		},
-
-		removeColumForFiltering(column) {
-			column.filtering = undefined;
-			removeItemInArray(this.state.filtering, column);
-		},
-
-		goToPage(i) {
-			if (i > 0 && i <= this.state.paging.count) {
-				this.state.paging.current = i;
+			if (this.state.groupable) {
+				this.cleanSorting();
+				this.sortByMany(column);
+				column.grouping = true;
+				this.state.groupingColumns.push(column);
 			}
-		},
-
-		canShowPageNumber(i) {
-			let num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
-			return i >= num && i < num + this.maxCountOfPage;
-		},
-
-		countPage(size) {
-			return size == 0 ? 1 : Math.ceil(this.items.length / size)
 		},
 
 		getGroupingItems() {
@@ -353,9 +333,146 @@ export default {
 					item: item
 				});
 			}
-			console.log(result);
 			return result;
 		},
+
+		removeColumForGrouping(column) {
+			column.grouping = false;
+			removeItemInArray(this.state.groupingColumns, column, x => x);
+		},
+
+/* FILTERING */
+		addColumForFiltering(column, filter) {
+			column.filtering = filter;
+			this.state.filtering.push(column);
+		},
+
+		removeColumForFiltering(column) {
+			column.filtering = undefined;
+			removeItemInArray(this.state.filtering, column);
+		},
+
+/* PAGING */
+		goToPage(i) {
+			if (i > 0 && i <= this.state.paging.count) {
+				this.state.paging.current = i;
+			}
+		},
+
+		canShowPageNumber(i) {
+			let num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+			return i >= num && i < num + this.maxCountOfPage;
+		},
+
+		countPage(size) {
+			return size == 0 ? 1 : Math.ceil(this.items.length / size)
+		},
+
+/* RESIZING */
+		beginResizeColumn(column, event) {
+			let columnElement = event.target.parentNode.parentNode.parentNode;
+			this.state.resizing.column = column;
+			if (!this.state.resizing.column.width) {
+				this.state.resizing.column.width = this.getMinWidth(column) + this.minWidthBias;
+			}
+			this.state.resizing.mousePosition.x = event.clientX;
+		},
+
+		resizeColumn(event) {
+			if (this.state.resizing.column) {
+				let currentPosMouseX = event.clientX;
+				let currentWidth = this.state.resizing.column.width;
+				let deff = currentPosMouseX - this.state.resizing.mousePosition.x;
+				let minWidth = this.getMinWidth(this.state.resizing.column) + this.minWidthBias;
+				if (deff > 0 || currentWidth + deff > minWidth) {
+					this.state.resizing.column.width += currentPosMouseX - this.state.resizing.mousePosition.x;
+					this.state.resizing.mousePosition.x = currentPosMouseX;
+				}
+			}
+		},
+
+		stopResizeColumn() {
+			this.state.resizing.column = null;
+			this.state.resizing.mousePosition.x = null;
+		},
+
+/* MOVING */
+		moveColumn(from, to) {
+			let indexOfDragable = this.state.columns.indexOf(from);
+			let indexOfDropable = this.state.columns.indexOf(to);
+			if (indexOfDropable > -1) {
+				this.state.columns.splice(indexOfDragable, 1);
+				this.state.columns.splice(indexOfDropable, 0, from);
+			}
+		},
+
+/* HIDDING */
+		hideColumn(column, event) {
+			column.hidden = true;
+			this.$forceUpdate();
+		},
+
+		showColumn(column, event) {
+			column.hidden = false;
+			this.$forceUpdate();
+		},
+
+/* SIZES */
+		getTableWidth() {
+			let self = this;
+			let result = this.state.columns.reduce((a, b) => 
+				a + (
+					!b.hidden 
+						? b.width || b.name.length * 18 + 50
+						: self.hiddenColumnSize), 
+				0);
+			return result;
+		},
+
+/* DRAG AND DROP */
+		columnDragStart(column, event) {
+			if (!this.state.resizing.column) {
+				this.state.moving.dragable = column;
+			}
+			else {
+				event.preventDefault();
+			}
+		},
+
+		columnDragEnter(column, event) {
+			if (!this.state.resizing.column) {
+				this.state.moving.dropable = column;
+			}
+			else {
+				event.preventDefault();
+			}
+		},
+
+		columnDragEnd(event) {
+			if (!this.state.resizing.column) {
+				let dragableColumn = this.state.moving.dragable;
+				let dropableColumn = this.state.moving.dropable;
+				if (!dragableColumn || !dropableColumn) {
+					return;
+				}
+				if (dragableColumn != dropableColumn) {
+					if (dropableColumn == this.groupAreaName) {
+						this.addColumForGrouping(dragableColumn);
+					}
+					else {
+						this.moveColumn(dragableColumn, dropableColumn);
+					}
+				}
+				this.state.moving.dragable = null;
+				this.state.moving.dropable = null;
+				this.$forceUpdate();
+			}
+			else {
+				event.preventDefault();
+			}
+		},
+
+
 
 
 
@@ -458,50 +575,6 @@ export default {
 			this.page.number = 1;
 		},
 
-
-
-		columnDragStart(column, event) {
-			if (!this.resizable.column) {
-				this.movableColumn.dragable = column;
-			}
-			else {
-				event.preventDefault();
-			}
-		},
-
-		columnDragEnter(column, event) {
-			if (!this.resizable.column) {
-				this.movableColumn.dropable = column;
-			}
-			else {
-				event.preventDefault();
-			}
-		},
-
-		columnDragEnd(event) {
-			if (!this.resizable.column) {
-				let dragableColumn = this.movableColumn.dragable;
-				let dropableColumn = this.movableColumn.dropable;
-				if (!dragableColumn || !dropableColumn) {
-					return;
-				}
-				if (dragableColumn != dropableColumn) {
-					if (dropableColumn == this.groupAreaName) {
-						this.group(dragableColumn);
-					}
-					else {
-						this.moveColumn(dragableColumn, dropableColumn);
-					}
-				}
-				this.movableColumn.dragable = null;
-				this.movableColumn.dropable = null;
-				this.$forceUpdate();
-			}
-			else {
-				event.preventDefault();
-			}
-		},
-
 		group(column) {
 			if (this.groupingColumns.indexOf(column) == -1) {
 				this.groupingColumns.push(column);
@@ -515,15 +588,6 @@ export default {
 			this.groupingColumns.splice(i, 1);
 			this.sorting.column = null;
 			this.sorting.ascending = false;
-		},
-
-		moveColumn(from, to) {
-			let indexOfDragable = this.columnsInfo.indexOf(from);
-			let indexOfDropable = this.columnsInfo.indexOf(to);
-			if (indexOfDropable > -1) {
-				this.columnsInfo.splice(indexOfDragable, 1);
-				this.columnsInfo.splice(indexOfDropable, 0, from);
-			}
 		},
 
 		getTypedValue(value, type) {
@@ -558,52 +622,6 @@ export default {
 
 		hideHint(column) {
 			this.hints[column.id] = false;
-			this.$forceUpdate();
-		},
-
-		beginResizeColumn(column, event) {
-			let columnElement = event.target.parentNode.parentNode.parentNode;
-			this.resizable.column = column;
-			this.resizable.column.width = columnElement.offsetWidth;
-			this.resizable.mousePositionX = event.clientX;
-		},
-
-		resizeColumn(event) {
-			if (this.resizable.column) {
-				let currentPosMouseX = event.clientX;
-				let currentWidth = this.resizable.column.width;
-				let deff = currentPosMouseX - this.resizable.mousePositionX;
-				let minWidth = this.getMinWidth(this.resizable.column) + this.minWidthBias;
-				if (deff > 0 || currentWidth + deff > minWidth) {
-					this.resizable.column.width += currentPosMouseX - this.resizable.mousePositionX;
-					this.resizable.mousePositionX = currentPosMouseX;
-				}
-			}
-		},
-
-		stopResizeColumn() {
-			this.resizable.column = null;
-			this.resizable.mousePositionX = null;
-		},
-
-		getTableWidth() {
-			let self = this;
-			let result = this.columnsInfo.reduce((a, b) => 
-				a + (
-					!b.hidden 
-						? b.width || b.name.length * 18 + 50
-						: self.hiddenColumnSize), 
-				0);
-			return result;
-		},
-
-		hideColumn(column, event) {
-			column.hidden = true;
-			this.$forceUpdate();
-		},
-
-		showColumn(column, event) {
-			column.hidden = false;
 			this.$forceUpdate();
 		},
 

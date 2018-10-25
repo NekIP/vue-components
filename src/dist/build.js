@@ -149,7 +149,9 @@ exports.default = {
 		},
 		pageSizes: {
 			type: Array,
-			default: [25, 50, 100, 0],
+			default: function _default() {
+				return [25, 50, 100, 0];
+			},
 			required: false
 		}
 	},
@@ -376,20 +378,25 @@ exports.default = {
 		}
 	},
 	methods: {
+		/* SORTING */
 		sortByMany: function sortByMany(column) {
-			if (!column.sortingDirection) {
-				column.sortingDirection = 1;
-				this.state.sortingColumns.push(column);
-			} else {
-				column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
-				this.forceUpdate();
+			if (this.state.sortable || this.state.groupable) {
+				if (!column.sortingDirection) {
+					column.sortingDirection = 1;
+					this.state.sortingColumns.push(column);
+				} else {
+					column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
+					this.forceUpdate();
+				}
 			}
 		},
 		sortByOne: function sortByOne(column) {
-			if (!column.sortingDirection) {
-				this.cleanSorting();
+			if (this.state.sortable || this.state.groupable) {
+				if (!column.sortingDirection) {
+					this.cleanSorting();
+				}
+				this.sortByMany(column);
 			}
-			this.sortByMany(column);
 		},
 		cleanSorting: function cleanSorting() {
 			for (var i = this.state.sortingColumns.length - 1; i >= 0; i--) {
@@ -406,37 +413,16 @@ exports.default = {
 				return x;
 			});
 		},
+
+
+		/* GROUPING */
 		addColumForGrouping: function addColumForGrouping(column) {
-			this.cleanSorting();
-			this.sortByMany(column);
-			column.grouping = true;
-			this.state.groupingColumns.push(column);
-		},
-		removeColumForGrouping: function removeColumForGrouping(column) {
-			column.grouping = false;
-			(0, _vueTableFunctions.removeItemInArray)(this.state.groupingColumns, column, function (x) {
-				return x;
-			});
-		},
-		addColumForFiltering: function addColumForFiltering(column, filter) {
-			column.filtering = filter;
-			this.state.filtering.push(column);
-		},
-		removeColumForFiltering: function removeColumForFiltering(column) {
-			column.filtering = undefined;
-			(0, _vueTableFunctions.removeItemInArray)(this.state.filtering, column);
-		},
-		goToPage: function goToPage(i) {
-			if (i > 0 && i <= this.state.paging.count) {
-				this.state.paging.current = i;
+			if (this.state.groupable) {
+				this.cleanSorting();
+				this.sortByMany(column);
+				column.grouping = true;
+				this.state.groupingColumns.push(column);
 			}
-		},
-		canShowPageNumber: function canShowPageNumber(i) {
-			var num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
-			return i >= num && i < num + this.maxCountOfPage;
-		},
-		countPage: function countPage(size) {
-			return size == 0 ? 1 : Math.ceil(this.items.length / size);
 		},
 		getGroupingItems: function getGroupingItems() {
 			var result = [];
@@ -461,8 +447,136 @@ exports.default = {
 					item: item
 				});
 			}
-			console.log(result);
 			return result;
+		},
+		removeColumForGrouping: function removeColumForGrouping(column) {
+			column.grouping = false;
+			(0, _vueTableFunctions.removeItemInArray)(this.state.groupingColumns, column, function (x) {
+				return x;
+			});
+		},
+
+
+		/* FILTERING */
+		addColumForFiltering: function addColumForFiltering(column, filter) {
+			column.filtering = filter;
+			this.state.filtering.push(column);
+		},
+		removeColumForFiltering: function removeColumForFiltering(column) {
+			column.filtering = undefined;
+			(0, _vueTableFunctions.removeItemInArray)(this.state.filtering, column);
+		},
+
+
+		/* PAGING */
+		goToPage: function goToPage(i) {
+			if (i > 0 && i <= this.state.paging.count) {
+				this.state.paging.current = i;
+			}
+		},
+		canShowPageNumber: function canShowPageNumber(i) {
+			var num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+			return i >= num && i < num + this.maxCountOfPage;
+		},
+		countPage: function countPage(size) {
+			return size == 0 ? 1 : Math.ceil(this.items.length / size);
+		},
+
+
+		/* RESIZING */
+		beginResizeColumn: function beginResizeColumn(column, event) {
+			var columnElement = event.target.parentNode.parentNode.parentNode;
+			this.state.resizing.column = column;
+			if (!this.state.resizing.column.width) {
+				this.state.resizing.column.width = this.getMinWidth(column) + this.minWidthBias;
+			}
+			this.state.resizing.mousePosition.x = event.clientX;
+		},
+		resizeColumn: function resizeColumn(event) {
+			if (this.state.resizing.column) {
+				var currentPosMouseX = event.clientX;
+				var currentWidth = this.state.resizing.column.width;
+				var deff = currentPosMouseX - this.state.resizing.mousePosition.x;
+				var minWidth = this.getMinWidth(this.state.resizing.column) + this.minWidthBias;
+				if (deff > 0 || currentWidth + deff > minWidth) {
+					this.state.resizing.column.width += currentPosMouseX - this.state.resizing.mousePosition.x;
+					this.state.resizing.mousePosition.x = currentPosMouseX;
+				}
+			}
+		},
+		stopResizeColumn: function stopResizeColumn() {
+			this.state.resizing.column = null;
+			this.state.resizing.mousePosition.x = null;
+		},
+
+
+		/* MOVING */
+		moveColumn: function moveColumn(from, to) {
+			var indexOfDragable = this.state.columns.indexOf(from);
+			var indexOfDropable = this.state.columns.indexOf(to);
+			if (indexOfDropable > -1) {
+				this.state.columns.splice(indexOfDragable, 1);
+				this.state.columns.splice(indexOfDropable, 0, from);
+			}
+		},
+
+
+		/* HIDDING */
+		hideColumn: function hideColumn(column, event) {
+			column.hidden = true;
+			this.$forceUpdate();
+		},
+		showColumn: function showColumn(column, event) {
+			column.hidden = false;
+			this.$forceUpdate();
+		},
+
+
+		/* SIZES */
+		getTableWidth: function getTableWidth() {
+			var self = this;
+			var result = this.state.columns.reduce(function (a, b) {
+				return a + (!b.hidden ? b.width || b.name.length * 18 + 50 : self.hiddenColumnSize);
+			}, 0);
+			return result;
+		},
+
+
+		/* DRAG AND DROP */
+		columnDragStart: function columnDragStart(column, event) {
+			if (!this.state.resizing.column) {
+				this.state.moving.dragable = column;
+			} else {
+				event.preventDefault();
+			}
+		},
+		columnDragEnter: function columnDragEnter(column, event) {
+			if (!this.state.resizing.column) {
+				this.state.moving.dropable = column;
+			} else {
+				event.preventDefault();
+			}
+		},
+		columnDragEnd: function columnDragEnd(event) {
+			if (!this.state.resizing.column) {
+				var dragableColumn = this.state.moving.dragable;
+				var dropableColumn = this.state.moving.dropable;
+				if (!dragableColumn || !dropableColumn) {
+					return;
+				}
+				if (dragableColumn != dropableColumn) {
+					if (dropableColumn == this.groupAreaName) {
+						this.addColumForGrouping(dragableColumn);
+					} else {
+						this.moveColumn(dragableColumn, dropableColumn);
+					}
+				}
+				this.state.moving.dragable = null;
+				this.state.moving.dropable = null;
+				this.$forceUpdate();
+			} else {
+				event.preventDefault();
+			}
 		},
 		getColumnsInfo: function getColumnsInfo() {
 			var defaultType = 'string';
@@ -555,41 +669,6 @@ exports.default = {
 		firstPage: function firstPage() {
 			this.page.number = 1;
 		},
-		columnDragStart: function columnDragStart(column, event) {
-			if (!this.resizable.column) {
-				this.movableColumn.dragable = column;
-			} else {
-				event.preventDefault();
-			}
-		},
-		columnDragEnter: function columnDragEnter(column, event) {
-			if (!this.resizable.column) {
-				this.movableColumn.dropable = column;
-			} else {
-				event.preventDefault();
-			}
-		},
-		columnDragEnd: function columnDragEnd(event) {
-			if (!this.resizable.column) {
-				var dragableColumn = this.movableColumn.dragable;
-				var dropableColumn = this.movableColumn.dropable;
-				if (!dragableColumn || !dropableColumn) {
-					return;
-				}
-				if (dragableColumn != dropableColumn) {
-					if (dropableColumn == this.groupAreaName) {
-						this.group(dragableColumn);
-					} else {
-						this.moveColumn(dragableColumn, dropableColumn);
-					}
-				}
-				this.movableColumn.dragable = null;
-				this.movableColumn.dropable = null;
-				this.$forceUpdate();
-			} else {
-				event.preventDefault();
-			}
-		},
 		group: function group(column) {
 			if (this.groupingColumns.indexOf(column) == -1) {
 				this.groupingColumns.push(column);
@@ -602,14 +681,6 @@ exports.default = {
 			this.groupingColumns.splice(i, 1);
 			this.sorting.column = null;
 			this.sorting.ascending = false;
-		},
-		moveColumn: function moveColumn(from, to) {
-			var indexOfDragable = this.columnsInfo.indexOf(from);
-			var indexOfDropable = this.columnsInfo.indexOf(to);
-			if (indexOfDropable > -1) {
-				this.columnsInfo.splice(indexOfDragable, 1);
-				this.columnsInfo.splice(indexOfDropable, 0, from);
-			}
 		},
 		getTypedValue: function getTypedValue(value, type) {
 			switch (type) {
@@ -639,43 +710,6 @@ exports.default = {
 		},
 		hideHint: function hideHint(column) {
 			this.hints[column.id] = false;
-			this.$forceUpdate();
-		},
-		beginResizeColumn: function beginResizeColumn(column, event) {
-			var columnElement = event.target.parentNode.parentNode.parentNode;
-			this.resizable.column = column;
-			this.resizable.column.width = columnElement.offsetWidth;
-			this.resizable.mousePositionX = event.clientX;
-		},
-		resizeColumn: function resizeColumn(event) {
-			if (this.resizable.column) {
-				var currentPosMouseX = event.clientX;
-				var currentWidth = this.resizable.column.width;
-				var deff = currentPosMouseX - this.resizable.mousePositionX;
-				var minWidth = this.getMinWidth(this.resizable.column) + this.minWidthBias;
-				if (deff > 0 || currentWidth + deff > minWidth) {
-					this.resizable.column.width += currentPosMouseX - this.resizable.mousePositionX;
-					this.resizable.mousePositionX = currentPosMouseX;
-				}
-			}
-		},
-		stopResizeColumn: function stopResizeColumn() {
-			this.resizable.column = null;
-			this.resizable.mousePositionX = null;
-		},
-		getTableWidth: function getTableWidth() {
-			var self = this;
-			var result = this.columnsInfo.reduce(function (a, b) {
-				return a + (!b.hidden ? b.width || b.name.length * 18 + 50 : self.hiddenColumnSize);
-			}, 0);
-			return result;
-		},
-		hideColumn: function hideColumn(column, event) {
-			column.hidden = true;
-			this.$forceUpdate();
-		},
-		showColumn: function showColumn(column, event) {
-			column.hidden = false;
 			this.$forceUpdate();
 		},
 		selectFilter: function selectFilter(column, mode) {
@@ -721,183 +755,246 @@ exports.default = {
 
 
 Object.defineProperty(exports, "__esModule", {
-	value: true
+    value: true
 });
 
 var _fuse = __webpack_require__(23);
 
 var _fuse2 = _interopRequireDefault(_fuse);
 
+var _vClickOutside = __webpack_require__(25);
+
+var _vClickOutside2 = _interopRequireDefault(_vClickOutside);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
 exports.default = {
-	model: {},
-	props: {
-		allOptionGroups: {
-			type: Array,
-			required: true
-		},
-		defaultTitle: {
-			type: String,
-			required: true
-		},
-		multipleSelectedTitleChunk: {
-			type: String,
-			required: true
-		},
-		allowMultiple: {
-			type: Boolean,
-			default: true
-		}
-	},
-	data: function data() {
-		return {
-			selectedIds: [],
-			optionGroups: this.allOptionGroups,
-			title: this.defaultTitle,
-			isExpanded: false,
-			isAllOptionsSelected: false,
-			totalOptionsCount: 0,
-			searchString: "",
-			matchedItems: []
-		};
-	},
+    directives: {
+        clickOutside: _vClickOutside2.default.directive
+    },
+    model: {},
+    props: {
+        allOptionGroups: {
+            type: Array,
+            required: true
+        },
+        defaultTitle: {
+            type: String,
+            required: true
+        },
+        multipleSelectedTitleChunk: {
+            type: String,
+            required: true
+        },
+        allowMultiple: {
+            type: Boolean,
+            default: true
+        }
+    },
+    data: function data() {
+        return {
+            selectedIds: [],
+            optionGroups: this.allOptionGroups,
+            title: this.defaultTitle,
+            isExpanded: false,
+            isAllOptionsSelected: false,
+            groupToIsAllOptionsSelectedMap: {},
+            totalOptionsCount: 0,
+            searchString: "",
+            matchedItems: []
+        };
+    },
 
-	created: function created() {
-		var allOptions = [];
-		this.allOptionGroups.forEach(function (optionGroup) {
-			optionGroup.groupItems.forEach(function (option) {
-				allOptions.push(option);
-			});
-		});
-		this.totalOptionsCount = allOptions ? allOptions.length : 0;
-	},
-	watch: {
-		optionGroups: {
-			handler: function handler(val) {
-				var self = this;
-				this.selectedIds.length = 0;
-				this.optionGroups.forEach(function (optionGroup) {
-					optionGroup.groupItems.forEach(function (option) {
-						if (option.isSelected) {
-							self.selectedIds.push(option.value);
-						}
-					});
-				});
-				this.isAllOptionsSelected = !this.selectedIds ? false : this.selectedIds.length == this.totalOptionsCount;
+    created: function created() {
+        var _this = this;
 
-				this.onChange();
-			},
-			deep: true
-		}
-	},
-	methods: {
-		searchTermChanged: function searchTermChanged() {
-			var self = this;
+        var allOptions = [];
+        this.allOptionGroups.forEach(function (optionGroup) {
+            _this.groupToIsAllOptionsSelectedMap[optionGroup.key] = false;
+            optionGroup.groupItems.forEach(function (option) {
+                allOptions.push(option);
+            });
+        });
+        this.totalOptionsCount = allOptions ? allOptions.length : 0;
+    },
+    watch: {
+        optionGroups: {
+            handler: function handler(val) {
+                var self = this;
+                this.selectedIds.length = 0;
+                this.optionGroups.forEach(function (optionGroup) {
+                    optionGroup.groupItems.forEach(function (option) {
+                        if (option.isSelected) {
+                            self.selectedIds.push(option.value);
+                        }
+                    });
+                });
+                this.isAllOptionsSelected = !this.selectedIds ? false : this.selectedIds.length == this.totalOptionsCount;
 
-			this.matchedItems.length = 0;
+                this.onChange();
+            },
+            deep: true
+        }
+    },
+    methods: {
+        hide: function hide(e, el) {
 
-			var options = {
-				keys: ['text'],
-				includeScore: true
-			};
+            if (e.target.className == "overSelect") {
+                return;
+            }
 
-			this.allOptionGroups.forEach(function (optionGroup) {
-				var fuse = new _fuse2.default(optionGroup.groupItems, options);
+            if (this.isExpanded) {
+                this.isExpanded = false;
+            }
+        },
+        changeIsExpandedState: function changeIsExpandedState() {
+            this.isExpanded = !this.isExpanded;
+        },
+        searchTermChanged: function searchTermChanged() {
+            var self = this;
 
-				var test = fuse.search(self.searchString);
+            this.matchedItems.length = 0;
 
-				test.forEach(function (match) {
+            var options = {
+                keys: ['text'],
+                includeScore: true
+            };
 
-					self.matchedItems.push(match.item.value);
-				});
-			});
-		},
-		changeOptionState: function changeOptionState(option) {
-			var initialState = option.isSelected;
+            this.allOptionGroups.forEach(function (optionGroup) {
+                var fuse = new _fuse2.default(optionGroup.groupItems, options);
 
-			if (!this.allowMultiple) {
-				this.optionGroups.forEach(function (optionGroup) {
-					optionGroup.groupItems.forEach(function (option) {
-						option.isSelected = false;
-					});
-				});
-			}
-			console.log("I am here");
-			option.isSelected = !initialState;
-		},
-		onChange: function onChange() {
-			this.updateTitle();
-			this.$emit('selection-changed', this.selectedIds);
-		},
-		selectAllOrUnselectAll: function selectAllOrUnselectAll() {
-			this.isAllOptionsSelected = !this.selectedIds ? false : this.selectedIds.length == this.totalOptionsCount;
+                var test = fuse.search(self.searchString);
 
-			var newState = !this.isAllOptionsSelected;
+                test.forEach(function (match) {
+                    self.matchedItems.push(match.item.value);
+                });
+            });
+        },
+        changeOptionState: function changeOptionState(option) {
+            var initialState = option.isSelected;
 
-			this.optionGroups.forEach(function (optionGroup) {
-				optionGroup.groupItems.forEach(function (option) {
-					option.isSelected = newState;
-				});
-			});
-		},
-		updateTitle: function updateTitle() {
-			if (this.selectedIds.length == 0 || !this.selectedIds) {
-				this.title = this.defaultTitle;
-			}
-			if (this.selectedIds.length == 1) {
-				this.title = '' + this.selectedIds[0];
-			} else {
-				this.title = this.selectedIds.length + ' ' + this.multipleSelectedTitleChunk;
-			}
-		}
-	}
-}; //
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
+            if (!this.allowMultiple) {
+                this.optionGroups.forEach(function (optionGroup) {
+                    optionGroup.groupItems.forEach(function (option) {
+                        option.isSelected = false;
+                    });
+                });
+            }
+            option.isSelected = !initialState;
+        },
+        onChange: function onChange() {
+            this.updateTitle();
+            this.$emit('selection-changed', this.selectedIds);
+        },
+        selectAllOrUnselectAll: function selectAllOrUnselectAll() {
+            this.isAllOptionsSelected = !this.selectedIds ? false : this.selectedIds.length == this.totalOptionsCount;
+
+            var newState = !this.isAllOptionsSelected;
+
+            this.optionGroups.forEach(function (optionGroup) {
+                optionGroup.groupItems.forEach(function (option) {
+                    option.isSelected = newState;
+                });
+            });
+        },
+        selectOrUnselectAllItemsInGroup: function selectOrUnselectAllItemsInGroup(groupKey) {
+            var _this2 = this;
+
+            this.optionGroups.forEach(function (optionGroup) {
+                if (optionGroup.key == groupKey) {
+                    var isAllOptionsSelected = _this2.groupToIsAllOptionsSelectedMap[groupKey] ? _this2.groupToIsAllOptionsSelectedMap[groupKey] : false;
+
+                    var allOptionsCount = optionGroup.groupItems.length;
+                    var selectedOptionsCount = 0;
+                    optionGroup.groupItems.forEach(function (option) {
+                        if (option.isSelected) {
+                            selectedOptionsCount += 1;
+                        }
+                    });
+                    if (allOptionsCount == selectedOptionsCount) {
+                        isAllOptionsSelected = true;
+                    }
+                    _this2.groupToIsAllOptionsSelectedMap[groupKey] = !isAllOptionsSelected;
+                }
+            });
+
+            var newState = !this.isAllOptionsSelected;
+
+            this.optionGroups.forEach(function (optionGroup) {
+                if (optionGroup.key == groupKey) {
+                    optionGroup.groupItems.forEach(function (option) {
+                        option.isSelected = newState;
+                    });
+                }
+            });
+        },
+        updateTitle: function updateTitle() {
+            if (this.selectedIds.length == 0 || !this.selectedIds) {
+                this.title = this.defaultTitle;
+            }
+            if (this.selectedIds.length == 1) {
+                this.title = '' + this.selectedIds[0];
+            } else {
+                this.title = this.selectedIds.length + ' ' + this.multipleSelectedTitleChunk;
+            }
+        }
+    }
+};
 
 /***/ }),
 /* 2 */
@@ -1279,13 +1376,17 @@ var render = function() {
                         attrs: { draggable: "true" },
                         on: {
                           dragstart: function($event) {
-                            _vm.columnDragStart(column, $event)
+                            _vm.state.groupable
+                              ? _vm.columnDragStart(column, $event)
+                              : 0
                           },
                           dragenter: function($event) {
-                            _vm.columnDragEnter(column, $event)
+                            _vm.state.groupable
+                              ? _vm.columnDragEnter(column, $event)
+                              : 0
                           },
                           dragend: function($event) {
-                            _vm.columnDragEnd($event)
+                            _vm.state.groupable ? _vm.columnDragEnd($event) : 0
                           }
                         }
                       },
@@ -1395,13 +1496,17 @@ var render = function() {
                                           ) {
                                             return null
                                           }
-                                          _vm.sortByOne(column)
+                                          _vm.state.sortable
+                                            ? _vm.sortByOne(column)
+                                            : 0
                                         },
                                         function($event) {
                                           if (!$event.ctrlKey) {
                                             return null
                                           }
-                                          _vm.sortByMany(column)
+                                          _vm.state.sortable
+                                            ? _vm.sortByMany(column)
+                                            : 0
                                         }
                                       ]
                                     }
@@ -1519,7 +1624,7 @@ var render = function() {
                                           staticClass: "group",
                                           on: {
                                             click: function($event) {
-                                              column.grouping > -1
+                                              column.grouping
                                                 ? _vm.removeColumForGrouping(
                                                     column
                                                   )
@@ -2114,136 +2219,188 @@ var render = function() {
   var _vm = this
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
-  return _c("div", { staticClass: "vueselect" }, [
-    _c(
-      "div",
-      {
-        staticClass: "selectBox",
-        on: {
-          click: function($event) {
-            _vm.isExpanded = !_vm.isExpanded
-          }
+  return _c(
+    "div",
+    {
+      directives: [
+        {
+          name: "click-outside",
+          rawName: "v-click-outside",
+          value: _vm.hide,
+          expression: "hide"
         }
-      },
-      [
-        _c("select", { staticClass: "form-control" }, [
-          _c(
-            "option",
-            [
-              _vm._t("header", [_vm._v(_vm._s(_vm.title))], {
-                selectedIds: _vm.selectedIds
-              })
-            ],
-            2
-          )
-        ]),
-        _vm._v(" "),
-        _c("div", { staticClass: "overSelect" })
-      ]
-    ),
-    _vm._v(" "),
-    _c(
-      "div",
-      {
-        directives: [
-          {
-            name: "show",
-            rawName: "v-show",
-            value: _vm.isExpanded,
-            expression: "isExpanded"
-          }
-        ],
-        attrs: { id: "checkboxes" }
-      },
-      [
-        _c("div", { staticClass: "row" }, [
-          _c("div", { staticClass: "col col-md-8" }, [
-            _c("input", {
-              directives: [
-                {
-                  name: "model",
-                  rawName: "v-model",
-                  value: _vm.searchString,
-                  expression: "searchString"
-                }
+      ],
+      staticClass: "vueselect"
+    },
+    [
+      _c(
+        "div",
+        { staticClass: "select-box", on: { click: _vm.changeIsExpandedState } },
+        [
+          _c("select", { staticClass: "form-control" }, [
+            _c(
+              "option",
+              [
+                _vm._t(
+                  "header",
+                  [
+                    _vm._v(
+                      "\n\t\t\t\t\t\t" + _vm._s(_vm.title) + "\n\t\t\t\t\t"
+                    )
+                  ],
+                  { selectedIds: _vm.selectedIds }
+                )
               ],
-              attrs: { type: "text", placeholder: "Search" },
-              domProps: { value: _vm.searchString },
-              on: {
-                input: [
-                  function($event) {
-                    if ($event.target.composing) {
-                      return
-                    }
-                    _vm.searchString = $event.target.value
-                  },
-                  _vm.searchTermChanged
-                ]
-              }
-            })
+              2
+            )
           ]),
           _vm._v(" "),
-          _c("div", { staticClass: "col col-md-4" }, [
-            _c(
-              "button",
+          _c("div", { staticClass: "over-select" })
+        ]
+      ),
+      _vm._v(" "),
+      _c("div", { staticClass: "checkboxes-container" }, [
+        _c(
+          "div",
+          {
+            directives: [
               {
-                staticClass: "btn btn-primary btn-sm",
-                on: { click: _vm.selectAllOrUnselectAll }
-              },
-              [
-                _vm._v(
-                  "\n\t\t\t\t\t" +
-                    _vm._s(
-                      _vm.isAllOptionsSelected ? "Unselect all" : "Select all"
-                    ) +
-                    "\n\t\t\t\t"
-                )
-              ]
-            )
-          ])
-        ]),
-        _vm._v(" "),
-        _vm._l(_vm.optionGroups, function(optGroup) {
-          return _c(
-            "div",
-            [
-              _c("p", [_vm._v(_vm._s(optGroup.groupHeader))]),
-              _vm._v(" "),
-              _vm._l(optGroup.groupItems, function(opt) {
-                return [
-                  !_vm.searchString ||
-                  opt.isSelected ||
-                  _vm.matchedItems.includes(opt.value)
-                    ? [
-                        _c("label", { class: { selected: opt.isSelected } }, [
-                          _c("input", {
-                            attrs: { type: "checkbox" },
-                            domProps: {
-                              value: opt.value,
-                              checked: opt.isSelected
-                            },
-                            on: {
-                              click: function($event) {
-                                _vm.changeOptionState(opt)
-                              }
-                            }
-                          }),
-                          _vm._v(
-                            "\n\t\t\t\t\t\t" + _vm._s(opt.text) + "\n\t\t\t\t\t"
-                          )
-                        ])
-                      ]
-                    : _vm._e()
-                ]
-              })
+                name: "show",
+                rawName: "v-show",
+                value: _vm.isExpanded,
+                expression: "isExpanded"
+              }
             ],
-            2
-          )
-        })
-      ],
-      2
-    )
-  ])
+            staticClass: "checkboxes"
+          },
+          [
+            _c("div", { staticClass: "row" }, [
+              _c("div", { staticClass: "col col-md-12" }, [
+                _c("input", {
+                  directives: [
+                    {
+                      name: "model",
+                      rawName: "v-model",
+                      value: _vm.searchString,
+                      expression: "searchString"
+                    }
+                  ],
+                  staticClass: "search-text-box",
+                  attrs: { type: "text", placeholder: "Search" },
+                  domProps: { value: _vm.searchString },
+                  on: {
+                    input: [
+                      function($event) {
+                        if ($event.target.composing) {
+                          return
+                        }
+                        _vm.searchString = $event.target.value
+                      },
+                      _vm.searchTermChanged
+                    ]
+                  }
+                })
+              ]),
+              _vm._v(" "),
+              _c("div", { staticClass: "col col-md-12" }, [
+                _c(
+                  "button",
+                  {
+                    staticClass: "btn btn-link segpay-btn-link",
+                    attrs: { type: "button" },
+                    on: { click: _vm.selectAllOrUnselectAll }
+                  },
+                  [
+                    _vm._v(
+                      "\n\t\t\t\t\t\t\t" +
+                        _vm._s(
+                          _vm.isAllOptionsSelected
+                            ? "Unselect all"
+                            : "Select all"
+                        ) +
+                        "\n\t\t\t\t\t\t"
+                    )
+                  ]
+                )
+              ])
+            ]),
+            _vm._v(" "),
+            _vm._l(_vm.optionGroups, function(optGroup) {
+              return _c(
+                "div",
+                { staticClass: "options-group" },
+                [
+                  _c("p", { staticClass: "group-header" }, [
+                    _vm._v(_vm._s(optGroup.groupHeader))
+                  ]),
+                  _vm._v(" "),
+                  _c(
+                    "button",
+                    {
+                      staticClass: "btn btn-link segpay-btn-link",
+                      attrs: { type: "button" },
+                      on: {
+                        click: function($event) {
+                          _vm.selectOrUnselectAllItemsInGroup(optGroup.key)
+                        }
+                      }
+                    },
+                    [
+                      _vm._v(
+                        "\n\t\t\t\t\t\t" +
+                          _vm._s(
+                            _vm.groupToIsAllOptionsSelectedMap[optGroup.key]
+                              ? "Unselect all"
+                              : "Select all"
+                          ) +
+                          "\n\t\t\t\t\t"
+                      )
+                    ]
+                  ),
+                  _vm._v(" "),
+                  _vm._l(optGroup.groupItems, function(opt) {
+                    return [
+                      !_vm.searchString ||
+                      opt.isSelected ||
+                      _vm.matchedItems.includes(opt.value)
+                        ? [
+                            _c(
+                              "label",
+                              { class: { selected: opt.isSelected } },
+                              [
+                                _c("input", {
+                                  attrs: { type: "checkbox" },
+                                  domProps: {
+                                    value: opt.value,
+                                    checked: opt.isSelected
+                                  },
+                                  on: {
+                                    click: function($event) {
+                                      _vm.changeOptionState(opt)
+                                    }
+                                  }
+                                }),
+                                _vm._v(
+                                  "\n\t\t\t\t\t\t\t\t" +
+                                    _vm._s(opt.text) +
+                                    "\t\t\n\t\t\t\t\t\t\t"
+                                )
+                              ]
+                            )
+                          ]
+                        : _vm._e()
+                    ]
+                  })
+                ],
+                2
+              )
+            })
+          ],
+          2
+        )
+      ])
+    ]
+  )
 }
 var staticRenderFns = []
 render._withStripped = true
@@ -4811,7 +4968,7 @@ function applyToTag (styleElement, obj) {
 
 __webpack_require__(11);
 
-__webpack_require__(25);
+__webpack_require__(26);
 
 /***/ }),
 /* 11 */
@@ -5355,7 +5512,7 @@ exports = module.exports = __webpack_require__(8)(false);
 
 
 // module
-exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #adaeb0;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\r\n\t\t\t\t\tborder-color: #ccc;\r\n\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
+exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #3349a7;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\r\n\t\t\t\t\tborder-color: #ccc;\r\n\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
 
 // exports
 
@@ -5504,58 +5661,50 @@ function sort(data, state) {
 		return a > b ? direction : a < b ? -direction : 0;
 	}
 
-	if (state.sortable) {
-		if (state.sortingColumns && state.sortingColumns.length > 0) {
-			data.items.sort(function (item1, item2) {
-				return sortComparer(item1, item2, state.sortingColumns);
-			});
-		}
+	if (state.sortingColumns && state.sortingColumns.length > 0) {
+		data.items.sort(function (item1, item2) {
+			return sortComparer(item1, item2, state.sortingColumns);
+		});
 	}
 }
 
 function filter(data, state) {
-	if (state.filtrable) {
-		if (state.filteringColumns && state.filteringColumns.length > 0) {
-			data.items = data.items.filter(function (value) {
-				var result = true;
-				for (var i = 0; i < state.filteringColumns.length; i++) {
-					var filteringItem = state.filteringColumns[i];
-					result = result && filteringItem.filter.predicate(value, filteringItem.expected);
-				}
-				return result;
-			});
-		}
+	if (state.filteringColumns && state.filteringColumns.length > 0) {
+		data.items = data.items.filter(function (value) {
+			var result = true;
+			for (var i = 0; i < state.filteringColumns.length; i++) {
+				var filteringItem = state.filteringColumns[i];
+				result = result && filteringItem.filter.predicate(value, filteringItem.expected);
+			}
+			return result;
+		});
 	}
 }
 
 function group(data, state) {
-	if (state.groupable) {
-		if (state.groupingColumns && state.groupingColumns.length > 0) {
-			for (var i = 0; i < data.items.length; i++) {
-				var item = data.items[i];
-				var valueOfGroupingFields = [];
-				for (var j = 0; j < state.groupingColumns.length; j++) {
-					var groupingColumn = state.groupingColumns[j];
-					var value = item[groupingColumn.id];
-					valueOfGroupingFields.push(value);
-				}
-				item.$_grouping_values = valueOfGroupingFields;
+	if (state.groupingColumns && state.groupingColumns.length > 0) {
+		for (var i = 0; i < data.items.length; i++) {
+			var item = data.items[i];
+			var valueOfGroupingFields = [];
+			for (var j = 0; j < state.groupingColumns.length; j++) {
+				var groupingColumn = state.groupingColumns[j];
+				var value = item[groupingColumn.id];
+				valueOfGroupingFields.push(value);
 			}
+			item.$_grouping_values = valueOfGroupingFields;
 		}
 	}
 }
 
 function page(data, state) {
-	if (state.pageable) {
-		if (state.paging) {
-			if (state.paging.size == 0) {
-				return;
-			}
-			var from = state.paging.size * (state.paging.current - 1);
-			var to = state.paging.size * state.paging.current;
-			data.items = data.items.slice(from, to);
-			data.paging = state.paging;
+	if (state.paging) {
+		if (state.paging.size == 0) {
+			return;
 		}
+		var from = state.paging.size * (state.paging.current - 1);
+		var to = state.paging.size * state.paging.current;
+		data.items = data.items.slice(from, to);
+		data.paging = state.paging;
 	}
 }
 
@@ -5701,7 +5850,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
 /* harmony import */ var _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony reexport (unknown) */ for(var __WEBPACK_IMPORT_KEY__ in _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_0__) if(__WEBPACK_IMPORT_KEY__ !== 'default') (function(key) { __webpack_require__.d(__webpack_exports__, key, function() { return _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_0__[key]; }) }(__WEBPACK_IMPORT_KEY__));
-/* harmony import */ var _node_modules_vue_loader_lib_template_compiler_index_id_data_v_4c5661bc_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(6);
+/* harmony import */ var _node_modules_vue_loader_lib_template_compiler_index_id_data_v_4c5661bc_hasScoped_true_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(6);
 /* harmony import */ var _node_modules_vue_loader_lib_runtime_component_normalizer__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(2);
 var disposed = false
 function injectStyle (context) {
@@ -5718,14 +5867,14 @@ var __vue_template_functional__ = false
 /* styles */
 var __vue_styles__ = injectStyle
 /* scopeId */
-var __vue_scopeId__ = null
+var __vue_scopeId__ = "data-v-4c5661bc"
 /* moduleIdentifier (server only) */
 var __vue_module_identifier__ = null
 
 var Component = Object(_node_modules_vue_loader_lib_runtime_component_normalizer__WEBPACK_IMPORTED_MODULE_2__[/* default */ "a"])(
   _babel_loader_node_modules_vue_loader_lib_selector_type_script_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_0___default.a,
-  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_4c5661bc_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_1__[/* render */ "a"],
-  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_4c5661bc_hasScoped_false_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_1__[/* staticRenderFns */ "b"],
+  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_4c5661bc_hasScoped_true_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_1__[/* render */ "a"],
+  _node_modules_vue_loader_lib_template_compiler_index_id_data_v_4c5661bc_hasScoped_true_optionsId_0_buble_transforms_node_modules_vue_loader_lib_selector_type_template_index_0_vue_select_vue__WEBPACK_IMPORTED_MODULE_1__[/* staticRenderFns */ "b"],
   __vue_template_functional__,
   __vue_styles__,
   __vue_scopeId__,
@@ -5751,7 +5900,7 @@ if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
 var add = __webpack_require__(9).default
-var update = add("da1517f0", content, false, {});
+var update = add("c6234a14", content, false, {});
 // Hot Module Replacement
 if(false) {}
 
@@ -5764,7 +5913,7 @@ exports = module.exports = __webpack_require__(8)(false);
 
 
 // module
-exports.push([module.i, "\n.vueselect {\n  width: 100%;\n  max-width: 450px;\n  padding: 1em;\n}\n.selectBox {\n  position: relative;\n}\n.selectBox select {\n  width: 100%;\n  font-weight: bold;\n}\n.overSelect {\n  position: absolute;\n  left: 0;\n  right: 0;\n  top: 0;\n  bottom: 0;\n}\n#checkboxes {\n  border: 1px #dadada solid;\n  padding-left: 0.5em;\n  padding-top: 0.5em;\n  max-height: 200px;\n  overflow-y: scroll;\n}\n#checkboxes label {\n  display: block;\n  margin: 0;\n}\n#checkboxes label input {\n  margin: 0;\n  padding: 0.5em;\n}\n#checkboxes label:hover {\n  background-color: #ebebeb;\n}\nlabel.selected {\n  background-color: #44688d;\n  color: #ffffff;\n}\n#checkboxes label.selected:hover {\n  background-color: #44688d;\n  color: #ffffff;\n}\n", ""]);
+exports.push([module.i, "\n.segpay-btn-link[data-v-4c5661bc] {\n  padding: 0;\n}\n.segpay-btn-link[data-v-4c5661bc]:hover {\n    text-decoration: underline;\n    color: orange;\n}\n.vueselect[data-v-4c5661bc] {\n  width: 100%;\n  max-width: 450px;\n  padding: 1em;\n}\n.over-select[data-v-4c5661bc] {\n  position: absolute;\n  left: 0;\n  right: 0;\n  top: 0;\n  bottom: 0;\n}\n.select-box[data-v-4c5661bc] {\n  position: relative;\n}\n.select-box:hover select[data-v-4c5661bc] {\n    cursor: pointer;\n    background: linear-gradient(to top, #bebfc0 0%, #a2a3a5 100%);\n}\n.select-box select[data-v-4c5661bc] {\n    width: 100%;\n    color: white;\n    background: linear-gradient(to bottom, #bebfc0 0%, #a2a3a5 100%);\n}\n.checkboxes-container[data-v-4c5661bc] {\n  position: relative;\n  width: 100%;\n  z-index: 100;\n}\n.checkboxes-container .checkboxes[data-v-4c5661bc] {\n    background-color: #ffffff;\n    border: 1px #dadada solid;\n    padding-left: 0.5em;\n    padding-top: 0.5em;\n    max-height: 200px;\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    overflow-y: scroll;\n}\n.checkboxes-container .checkboxes .options-group[data-v-4c5661bc] {\n      padding-top: 1em;\n      padding-bottom: 1em;\n}\n.checkboxes-container .checkboxes .search-text-box[data-v-4c5661bc] {\n      width: 100%;\n}\n.checkboxes-container .checkboxes .group-header[data-v-4c5661bc] {\n      margin: 0;\n      font-weight: bold;\n}\n.checkboxes-container .checkboxes label[data-v-4c5661bc] {\n      display: block;\n      margin-top: 1px;\n      margin-bottom: 1px;\n      border: 1px dotted transparent;\n      font-weight: 500;\n}\n.checkboxes-container .checkboxes label input[data-v-4c5661bc] {\n        margin: 0;\n        padding: 0.5em;\n}\n.checkboxes-container .checkboxes label[data-v-4c5661bc]:hover {\n        background-color: #ebebeb;\n        border-color: blue;\n}\n.checkboxes-container .checkboxes label.selected[data-v-4c5661bc] {\n        background-color: #415090;\n        color: #ffffff;\n        border: 1px solid orange;\n}\n.checkboxes-container .checkboxes label.selected[data-v-4c5661bc]:hover {\n          background-color: #415090;\n}\n", ""]);
 
 // exports
 
@@ -6853,12 +7002,77 @@ module.exports = function (module) {
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-__webpack_require__(26);
+!function (e, n) {
+  "object" == ( false ? undefined : _typeof(exports)) && "undefined" != typeof module ? module.exports = n() :  true ? !(__WEBPACK_AMD_DEFINE_FACTORY__ = (n),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.call(exports, __webpack_require__, exports, module)) :
+				__WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)) : undefined;
+}(undefined, function () {
+  var e = "ontouchstart" in window || navigator.msMaxTouchPoints > 0 ? ["touchstart", "click"] : ["click"],
+      n = [];function t(n) {
+    var t = "function" == typeof n;if (!t && "object" != (typeof n === "undefined" ? "undefined" : _typeof(n))) throw new Error("v-click-outside: Binding value must be a function or an object");return { handler: t ? n : n.handler, middleware: n.middleware || function (e) {
+        return e;
+      }, events: n.events || e };
+  }function r(e) {
+    var n = e.el,
+        t = e.event,
+        r = e.handler,
+        i = e.middleware;t.target !== n && !n.contains(t.target) && i(t, n) && r(t, n);
+  }var i = "undefined" != typeof window ? { bind: function bind(e, i) {
+      var d = t(i.value),
+          o = d.handler,
+          a = d.middleware,
+          u = { el: e, eventHandlers: d.events.map(function (n) {
+          return { event: n, handler: function handler(n) {
+              return r({ event: n, el: e, handler: o, middleware: a });
+            } };
+        }) };u.eventHandlers.forEach(function (e) {
+        return document.addEventListener(e.event, e.handler);
+      }), n.push(u);
+    }, update: function update(e, i) {
+      var d = t(i.value),
+          o = d.handler,
+          a = d.middleware,
+          u = d.events,
+          c = n.find(function (n) {
+        return n.el === e;
+      });c.eventHandlers.forEach(function (e) {
+        return document.removeEventListener(e.event, e.handler);
+      }), c.eventHandlers = u.map(function (n) {
+        return { event: n, handler: function handler(n) {
+            return r({ event: n, el: e, handler: o, middleware: a });
+          } };
+      }), c.eventHandlers.forEach(function (e) {
+        return document.addEventListener(e.event, e.handler);
+      });
+    }, unbind: function unbind(e) {
+      n.find(function (n) {
+        return n.el === e;
+      }).eventHandlers.forEach(function (e) {
+        return document.removeEventListener(e.event, e.handler);
+      });
+    }, instances: n } : {};return { install: function install(e) {
+      e.directive("click-outside", i);
+    }, directive: i };
+});
+//# sourceMappingURL=v-click-outside.min.min.min.min.umd.js.map
 
 /***/ }),
 /* 26 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+__webpack_require__(27);
+
+/***/ }),
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6895,6 +7109,7 @@ var app = new Vue({
             amount: 7.56,
             url: 'test.com'
         }],
+        pageSizes: [100, 200, 500],
         columns: [{ id: 'mid', name: 'Merchant Id', type: 'number' }, { id: 'date', type: 'date' }, { id: 'purchaseId', type: 'number' }, { id: 'transactionId', type: 'number' }, 'status', 'currency', ['amount', 'Value', 'number'], 'url'],
         allOptionGroups: [{
             groupHeader: "Merchants first group",
