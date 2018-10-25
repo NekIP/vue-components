@@ -167,7 +167,7 @@ export function group(data, state) {
 					let value = item[groupingColumn.id];
 					valueOfGroupingFields.push(value);
 				}
-				item["$_grouping_values"] = valueOfGroupingFields;
+				item.$_grouping_values = valueOfGroupingFields;
 			}
 		}
 	}

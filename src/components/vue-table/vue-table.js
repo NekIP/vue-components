@@ -244,7 +244,7 @@ export default {
 			return result;
 		},
 		hasGrouped() {
-			return this.groupingColumns && this.groupingColumns.length > 0;
+			return this.state.groupingColumns && this.state.groupingColumns.length > 0;
 		},
 		data() {
 			let recalulate = this.state.recalculate;
@@ -273,11 +273,19 @@ export default {
 
 		sortByOne(column) {
 			if (!column.sortingDirection) {
-				for (let i = this.state.sortingColumns.length - 1; i >= 0; i--) {
-					this.removeColumnForSorting(this.state.sortingColumns[i])
-				}
+				this.cleanSorting();
 			}
 			this.sortByMany(column);
+		},
+
+		cleanSorting() {
+			for (let i = this.state.sortingColumns.length - 1; i >= 0; i--) {
+				let column = this.state.sortingColumns[i];
+				let indexOfColumnInGrouping = this.state.groupingColumns.indexOf(column);
+				if (indexOfColumnInGrouping < 0) {
+					this.removeColumnForSorting(column)
+				}
+			}
 		},
 
 		removeColumnForSorting(column) {
@@ -286,13 +294,15 @@ export default {
 		},
 
 		addColumForGrouping(column) {
+			this.cleanSorting();
+			this.sortByMany(column);
 			column.grouping = true;
-			this.state.grouping.push(column);
+			this.state.groupingColumns.push(column);
 		},
 
 		removeColumForGrouping(column) {
 			column.grouping = false;
-			removeItemInArray(this.state.grouping, column);
+			removeItemInArray(this.state.groupingColumns, column, x => x);
 		},
 
 		addColumForFiltering(column, filter) {
@@ -320,7 +330,32 @@ export default {
 			return size == 0 ? 1 : Math.ceil(this.items.length / size)
 		},
 
-
+		getGroupingItems() {
+			let result = [];
+			let current = new Array(this.state.groupingColumns.length);
+			for (let i = 0; i < this.data.items.length; i++) {
+				let item = this.data.items[i];
+				let groupingValues = item.$_grouping_values;
+				let mismatchOnPrevStep = false; 
+				for (let j = 0; j < groupingValues.length; j++) {
+					if (current[j] !== groupingValues[j] || mismatchOnPrevStep) {
+						mismatchOnPrevStep = true;
+						current[j] = groupingValues[j];
+						result.push({
+							level: j + 1,
+							group: groupingValues[j],
+							column: this.state.groupingColumns[j]
+						});
+					}
+				}
+				result.push({
+					level: groupingValues.length,
+					item: item
+				});
+			}
+			console.log(result);
+			return result;
+		},
 
 
 

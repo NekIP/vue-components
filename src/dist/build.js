@@ -360,7 +360,7 @@ exports.default = {
 			return result;
 		},
 		hasGrouped: function hasGrouped() {
-			return this.groupingColumns && this.groupingColumns.length > 0;
+			return this.state.groupingColumns && this.state.groupingColumns.length > 0;
 		},
 		data: function data() {
 			var recalulate = this.state.recalculate;
@@ -387,11 +387,18 @@ exports.default = {
 		},
 		sortByOne: function sortByOne(column) {
 			if (!column.sortingDirection) {
-				for (var i = this.state.sortingColumns.length - 1; i >= 0; i--) {
-					this.removeColumnForSorting(this.state.sortingColumns[i]);
-				}
+				this.cleanSorting();
 			}
 			this.sortByMany(column);
+		},
+		cleanSorting: function cleanSorting() {
+			for (var i = this.state.sortingColumns.length - 1; i >= 0; i--) {
+				var column = this.state.sortingColumns[i];
+				var indexOfColumnInGrouping = this.state.groupingColumns.indexOf(column);
+				if (indexOfColumnInGrouping < 0) {
+					this.removeColumnForSorting(column);
+				}
+			}
 		},
 		removeColumnForSorting: function removeColumnForSorting(column) {
 			column.sortingDirection = undefined;
@@ -400,12 +407,16 @@ exports.default = {
 			});
 		},
 		addColumForGrouping: function addColumForGrouping(column) {
+			this.cleanSorting();
+			this.sortByMany(column);
 			column.grouping = true;
-			this.state.grouping.push(column);
+			this.state.groupingColumns.push(column);
 		},
 		removeColumForGrouping: function removeColumForGrouping(column) {
 			column.grouping = false;
-			(0, _vueTableFunctions.removeItemInArray)(this.state.grouping, column);
+			(0, _vueTableFunctions.removeItemInArray)(this.state.groupingColumns, column, function (x) {
+				return x;
+			});
 		},
 		addColumForFiltering: function addColumForFiltering(column, filter) {
 			column.filtering = filter;
@@ -426,6 +437,32 @@ exports.default = {
 		},
 		countPage: function countPage(size) {
 			return size == 0 ? 1 : Math.ceil(this.items.length / size);
+		},
+		getGroupingItems: function getGroupingItems() {
+			var result = [];
+			var current = new Array(this.state.groupingColumns.length);
+			for (var i = 0; i < this.data.items.length; i++) {
+				var item = this.data.items[i];
+				var groupingValues = item.$_grouping_values;
+				var mismatchOnPrevStep = false;
+				for (var j = 0; j < groupingValues.length; j++) {
+					if (current[j] !== groupingValues[j] || mismatchOnPrevStep) {
+						mismatchOnPrevStep = true;
+						current[j] = groupingValues[j];
+						result.push({
+							level: j + 1,
+							group: groupingValues[j],
+							column: this.state.groupingColumns[j]
+						});
+					}
+				}
+				result.push({
+					level: groupingValues.length,
+					item: item
+				});
+			}
+			console.log(result);
+			return result;
 		},
 		getColumnsInfo: function getColumnsInfo() {
 			var defaultType = 'string';
@@ -1079,14 +1116,15 @@ var render = function() {
           }
         },
         [
-          _vm._l(_vm.groupingColumns, function(groupingColumn) {
+          _vm._l(_vm.state.groupingColumns, function(groupingColumn) {
             return _c(
               "div",
               {
+                key: groupingColumn.key,
                 staticClass: "group-item",
                 on: {
                   click: function($event) {
-                    _vm.sort(groupingColumn)
+                    _vm.sortByMany(groupingColumn)
                   }
                 }
               },
@@ -1099,8 +1137,8 @@ var render = function() {
                         {
                           name: "show",
                           rawName: "v-show",
-                          value: _vm.sorting.column === groupingColumn,
-                          expression: "sorting.column === groupingColumn"
+                          value: groupingColumn.sortingDirection,
+                          expression: "groupingColumn.sortingDirection"
                         }
                       ]
                     },
@@ -1114,8 +1152,9 @@ var render = function() {
                               {
                                 name: "show",
                                 rawName: "v-show",
-                                value: _vm.sorting.ascending,
-                                expression: "sorting.ascending"
+                                value: groupingColumn.sortingDirection == 1,
+                                expression:
+                                  "groupingColumn.sortingDirection == 1"
                               }
                             ],
                             staticClass: "fa fa-arrow-up arrow",
@@ -1133,8 +1172,9 @@ var render = function() {
                               {
                                 name: "show",
                                 rawName: "v-show",
-                                value: !_vm.sorting.ascending,
-                                expression: "!sorting.ascending"
+                                value: groupingColumn.sortingDirection == -1,
+                                expression:
+                                  "groupingColumn.sortingDirection == -1"
                               }
                             ],
                             staticClass: "fa fa-arrow-down arrow",
@@ -1153,7 +1193,7 @@ var render = function() {
                     staticClass: "ungroup",
                     on: {
                       click: function($event) {
-                        _vm.ungroup(groupingColumn)
+                        _vm.removeColumForGrouping(groupingColumn)
                       }
                     }
                   },
@@ -1188,8 +1228,8 @@ var render = function() {
               _c(
                 "tr",
                 [
-                  _vm._l(_vm.state.grouping, function(i) {
-                    return _c("th")
+                  _vm._l(_vm.state.groupingColumns, function(trash, j) {
+                    return _c("th", { key: j })
                   }),
                   _vm._v(" "),
                   _vm._l(_vm.state.columns, function(column) {
@@ -1214,7 +1254,7 @@ var render = function() {
               _c(
                 "tr",
                 [
-                  _vm._l(_vm.groupingColumns, function(trash, j) {
+                  _vm._l(_vm.state.groupingColumns, function(trash, j) {
                     return _c("th", {
                       key: j,
                       staticClass: "column",
@@ -1479,11 +1519,13 @@ var render = function() {
                                           staticClass: "group",
                                           on: {
                                             click: function($event) {
-                                              _vm.groupingColumns.indexOf(
-                                                column
-                                              ) > -1
-                                                ? _vm.ungroup(column)
-                                                : _vm.group(column)
+                                              column.grouping > -1
+                                                ? _vm.removeColumForGrouping(
+                                                    column
+                                                  )
+                                                : _vm.addColumForGrouping(
+                                                    column
+                                                  )
                                             }
                                           }
                                         },
@@ -1493,12 +1535,8 @@ var render = function() {
                                               {
                                                 name: "show",
                                                 rawName: "v-show",
-                                                value:
-                                                  _vm.groupingColumns.indexOf(
-                                                    column
-                                                  ) === -1,
-                                                expression:
-                                                  "groupingColumns.indexOf(column) === -1"
+                                                value: !column.grouping,
+                                                expression: "!column.grouping"
                                               }
                                             ],
                                             staticClass: "fa fa-object-group",
@@ -1516,12 +1554,8 @@ var render = function() {
                                               {
                                                 name: "show",
                                                 rawName: "v-show",
-                                                value:
-                                                  _vm.groupingColumns.indexOf(
-                                                    column
-                                                  ) !== -1,
-                                                expression:
-                                                  "groupingColumns.indexOf(column) !== -1"
+                                                value: column.grouping,
+                                                expression: "column.grouping"
                                               }
                                             ],
                                             staticClass: "fa fa-object-ungroup",
@@ -1670,16 +1704,17 @@ var render = function() {
               "tbody",
               { staticClass: "body" },
               [
-                _vm._l(_vm.data.items, function(item, i) {
-                  return !_vm.hasGrouped && _vm.filter(item)
-                    ? _c(
+                !_vm.hasGrouped
+                  ? _vm._l(_vm.data.items, function(item, i) {
+                      return _c(
                         "tr",
-                        { key: item, staticClass: "lighting-row" },
+                        { key: i, staticClass: "lighting-row" },
                         _vm._l(_vm.state.columns, function(column) {
                           return !column.hidden || i == 0
                             ? _c(
                                 "td",
                                 {
+                                  key: i + column.id,
                                   class: column.hidden ? "hidden-column" : "",
                                   attrs: {
                                     rowspan: column.hidden
@@ -1693,9 +1728,9 @@ var render = function() {
                                         column.id + "-column",
                                         [
                                           _vm._v(
-                                            "\n\t\t\t\t\t\t\t" +
+                                            "\n\t\t\t\t\t\t\t\t" +
                                               _vm._s(item[column.id]) +
-                                              "\n\t\t\t\t\t\t"
+                                              "\n\t\t\t\t\t\t\t"
                                           )
                                         ],
                                         { value: item[column.id] }
@@ -1713,94 +1748,100 @@ var render = function() {
                             : _vm._e()
                         })
                       )
-                    : _vm._e()
-                }),
+                    })
+                  : _vm._e(),
                 _vm._v(" "),
-                _vm._l(_vm.getGroupedItemsOnCurrentPage(), function(
-                  items,
-                  key
-                ) {
-                  return _vm.hasGrouped
-                    ? [
-                        _vm._l(key.split(_vm.groupDelimeterChar), function(
-                          groupValue,
-                          i
-                        ) {
-                          return _c(
-                            "tr",
-                            [
-                              _vm._l(new Array(i + 1), function(trash) {
-                                return _c("th")
-                              }),
-                              _vm._v(" "),
-                              _c(
-                                "th",
-                                {
-                                  attrs: {
-                                    colspan:
-                                      _vm.groupingColumns.length +
-                                      _vm.state.columns.length -
-                                      i -
-                                      1
-                                  }
-                                },
+                _vm.hasGrouped
+                  ? [
+                      _vm._l(_vm.getGroupingItems(), function(groupingItem, i) {
+                        return [
+                          groupingItem.group
+                            ? _c(
+                                "tr",
+                                { key: i },
                                 [
-                                  _vm._t(
-                                    _vm.groupingColumns[i].id + "-group",
+                                  _vm._l(
+                                    new Array(groupingItem.level),
+                                    function(trash, j) {
+                                      return _c("th", { key: j })
+                                    }
+                                  ),
+                                  _vm._v(" "),
+                                  _c(
+                                    "th",
+                                    {
+                                      attrs: {
+                                        colspan:
+                                          _vm.state.groupingColumns.length +
+                                          _vm.state.columns.length -
+                                          groupingItem.level
+                                      }
+                                    },
                                     [
-                                      _vm._v(
-                                        "\n\t\t\t\t\t\t\t\t" +
-                                          _vm._s(_vm.groupingColumns[i].name) +
-                                          ": " +
-                                          _vm._s(groupValue) +
-                                          "\n\t\t\t\t\t\t\t"
+                                      _vm._t(
+                                        groupingItem.column.id + "-group",
+                                        [
+                                          _vm._v(
+                                            "\n\t\t\t\t\t\t\t\t\t" +
+                                              _vm._s(groupingItem.column.name) +
+                                              ": " +
+                                              _vm._s(groupingItem.group) +
+                                              "\n\t\t\t\t\t\t\t\t"
+                                          )
+                                        ],
+                                        {
+                                          cells: _vm.getCells(
+                                            _vm.items,
+                                            groupingItem.column.id
+                                          ),
+                                          value: groupingItem.group
+                                        }
                                       )
                                     ],
-                                    {
-                                      cells: _vm.getCells(
-                                        items,
-                                        _vm.groupingColumns[i].id
-                                      ),
-                                      value: groupValue
-                                    }
+                                    2
                                   )
                                 ],
                                 2
                               )
-                            ],
-                            2
-                          )
-                        }),
-                        _vm._v(" "),
-                        _vm._l(items, function(item, i) {
-                          return _vm.filter(item)
+                            : _vm._e(),
+                          _vm._v(" "),
+                          groupingItem.item
                             ? _c(
                                 "tr",
-                                { staticClass: "lighting-row" },
+                                { key: i, staticClass: "lighting-row" },
                                 [
-                                  i === 0
-                                    ? _vm._l(_vm.groupingColumns, function(i) {
-                                        return _c("th", {
-                                          attrs: { rowspan: items.length }
-                                        })
-                                      })
-                                    : _vm._e(),
+                                  _c("th", {
+                                    attrs: { colspan: groupingItem.level }
+                                  }),
                                   _vm._v(" "),
                                   _vm._l(_vm.state.columns, function(column) {
                                     return _c(
                                       "td",
+                                      {
+                                        key: i + column.id,
+                                        class: column.hidden
+                                          ? "hidden-column"
+                                          : ""
+                                      },
                                       [
                                         !column.hidden
                                           ? _vm._t(
                                               column.id + "-column",
                                               [
                                                 _vm._v(
-                                                  "\n\t\t\t\t\t\t\t\t" +
-                                                    _vm._s(item[column.id]) +
-                                                    "\n\t\t\t\t\t\t\t"
+                                                  "\n\t\t\t\t\t\t\t\t\t" +
+                                                    _vm._s(
+                                                      groupingItem.item[
+                                                        column.id
+                                                      ]
+                                                    ) +
+                                                    "\n\t\t\t\t\t\t\t\t"
                                                 )
                                               ],
-                                              { value: item[column.id] }
+                                              {
+                                                value:
+                                                  groupingItem.item[column.id]
+                                              }
                                             )
                                           : _vm._e()
                                       ],
@@ -1811,10 +1852,10 @@ var render = function() {
                                 2
                               )
                             : _vm._e()
-                        })
-                      ]
-                    : _vm._e()
-                })
+                        ]
+                      })
+                    ]
+                  : _vm._e()
               ],
               2
             )
@@ -5498,7 +5539,7 @@ function group(data, state) {
 					var value = item[groupingColumn.id];
 					valueOfGroupingFields.push(value);
 				}
-				item["$_grouping_values"] = valueOfGroupingFields;
+				item.$_grouping_values = valueOfGroupingFields;
 			}
 		}
 	}

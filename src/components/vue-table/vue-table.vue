@@ -6,24 +6,25 @@
 				@dragenter="columnDragEnter(groupAreaName, $event)"
 				@dragend="columnDragEnd($event)">
 			<div 	class="group-item"
-					v-for="groupingColumn in groupingColumns"
-					@click="sort(groupingColumn)">
+					v-for="groupingColumn in state.groupingColumns"
+					:key="groupingColumn.key"
+					@click="sortByMany(groupingColumn)">
 				<div class="sort-icon">
-					<span v-show="sorting.column === groupingColumn">
+					<span v-show="groupingColumn.sortingDirection">
 						<transition name="sort-ascending" mode="out-in">
-							<i 	v-show="sorting.ascending" 
+							<i 	v-show="groupingColumn.sortingDirection == 1" 
 								class="fa fa-arrow-up arrow" 
 								aria-hidden="true"></i>
 						</transition>
 						<transition name="sort-descending" mode="out-in">
-							<i	v-show="!sorting.ascending" 
+							<i	v-show="groupingColumn.sortingDirection == -1" 
 								class="fa fa-arrow-down arrow" 
 								aria-hidden="true"></i>
 						</transition>
 					</span>
 				</div>
 				{{groupingColumn.name}}
-				<div @click="ungroup(groupingColumn)" class="ungroup">
+				<div @click="removeColumForGrouping(groupingColumn)" class="ungroup">
 					<i class="fa fa-times" aria-hidden="true"></i>
 				</div>
 			</div>
@@ -36,7 +37,7 @@
 
 				<tfoot class="footer">
 					<tr>
-						<th v-for="i in state.grouping"></th>
+						<th v-for="(trash, j) in state.groupingColumns" :key="j"></th>
 						<th v-for="column in state.columns">
 							<slot :name="column.id + '-footer'"
 								v-if="!column.hidden"
@@ -50,7 +51,7 @@
 					<tr>
 						<th class="column" 
 							:key="j"
-							v-for="(trash, j) in groupingColumns" 
+							v-for="(trash, j) in state.groupingColumns" 
 							:style="{ width: 30 }"></th>
 
 						<th  v-for="column in state.columns"
@@ -116,13 +117,13 @@
 
 								<template v-if="state.groupable">
 									<div class="group"
-										@click="groupingColumns.indexOf(column) > -1 ? ungroup(column) : group(column)"
+										@click="column.grouping > -1 ? removeColumForGrouping(column) : addColumForGrouping(column)"
 										v-if="!column.hidden">
-										<i 	v-show="groupingColumns.indexOf(column) === -1" 
+										<i 	v-show="!column.grouping" 
 											class="fa fa-object-group" 
 											aria-hidden="true"
 											:title="'Group column \'' + column.name + '\''"></i>
-										<i 	v-show="groupingColumns.indexOf(column) !== -1" 
+										<i 	v-show="column.grouping" 
 											class="fa fa-object-ungroup" 
 											aria-hidden="true"
 											:title="'Ungroup column \'' + column.name + '\''"></i>
@@ -168,51 +169,52 @@
 
 				<tbody class="body">
 
-					<tr v-if="!hasGrouped && filter(item)" 
-						v-for="(item, i) in data.items"
-						:key="item"
-						class="lighting-row">
-						<td v-for="column in state.columns"
-							v-if="!column.hidden || i == 0"
-							:rowspan="column.hidden ? state.paging.size : 1"
-							:class="column.hidden ? 'hidden-column' : ''">
-							<slot :name="column.id + '-column'" 
-								:value="item[column.id]"
-								v-if="!column.hidden">
-								{{item[column.id]}}
-							</slot>
-							<div v-if="column.hidden" class="vertical">{{column.name}}</div>
-						</td>
-					</tr>
-
-					<template v-if="hasGrouped" 
-							v-for="(items, key) in getGroupedItemsOnCurrentPage()">
-						<tr v-for="(groupValue, i) in key.split(groupDelimeterChar)">
-							<th v-for="trash in new Array(i + 1)"></th>
-							<th :colspan="groupingColumns.length + state.columns.length - i - 1">
-								<slot :name="groupingColumns[i].id + '-group'" 
-									:cells="getCells(items, groupingColumns[i].id)"
-									:value="groupValue">
-									{{groupingColumns[i].name}}: {{groupValue}}
-								</slot>
-							</th>
-						</tr>
-						<tr v-for="(item, i) in items"
-							v-if="filter(item)"
+					<template v-if="!hasGrouped">
+						<tr v-for="(item, i) in data.items"
+							:key="i"
 							class="lighting-row">
-							<template v-if="i === 0">
-								<th :rowspan="items.length" v-for="i in groupingColumns"></th>
-							</template>
-							<td v-for="column in state.columns">
+							<td v-for="column in state.columns"
+								v-if="!column.hidden || i == 0"
+								:key="i + column.id"
+								:rowspan="column.hidden ? state.paging.size : 1"
+								:class="column.hidden ? 'hidden-column' : ''">
 								<slot :name="column.id + '-column'" 
 									:value="item[column.id]"
 									v-if="!column.hidden">
 									{{item[column.id]}}
 								</slot>
+								<div v-if="column.hidden" class="vertical">{{column.name}}</div>
 							</td>
 						</tr>
 					</template>
 
+					<template v-if="hasGrouped" >
+						<template v-for="(groupingItem, i) in getGroupingItems()">
+							<tr v-if="groupingItem.group" :key="i">
+								<th v-for="(trash, j) in new Array(groupingItem.level)" :key="j"></th>
+								<th :colspan="state.groupingColumns.length + state.columns.length - groupingItem.level">
+									<slot :name="groupingItem.column.id + '-group'" 
+										:cells="getCells(items, groupingItem.column.id)"
+										:value="groupingItem.group">
+										{{groupingItem.column.name}}: {{groupingItem.group}}
+									</slot>
+								</th>
+							</tr>
+							<tr v-if="groupingItem.item" :key="i" class="lighting-row">
+								<th :colspan="groupingItem.level"></th>
+								<td v-for="column in state.columns"
+									:key="i + column.id"
+									:class="column.hidden ? 'hidden-column' : ''">
+									<slot :name="column.id + '-column'" 
+										:value="groupingItem.item[column.id]"
+										v-if="!column.hidden">
+										{{groupingItem.item[column.id]}}
+									</slot>
+								</td>
+							</tr>
+						</template>
+					</template>
+					
 				</tbody>
 			</table>
 		</div>
