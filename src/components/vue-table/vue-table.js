@@ -72,6 +72,7 @@ export default {
 
 				groupable: this.groupable,
 				groupingColumns: [],
+				hiddenGroups: {},
 
 				hidable: this.hidable,
 				hidingColumns: [],
@@ -203,7 +204,7 @@ export default {
 			for (let i = 0; i < this.data.items.length; i++) {
 				let item = this.data.items[i];
 				let groupingValues = item.$_grouping_values;
-				let mismatchOnPrevStep = false; 
+				let mismatchOnPrevStep = false;
 				for (let j = 0; j < groupingValues.length; j++) {
 					if (current[j] !== groupingValues[j] || mismatchOnPrevStep) {
 						mismatchOnPrevStep = true;
@@ -227,6 +228,27 @@ export default {
 			column.grouping = false;
 			removeItemInArray(this.state.groupingColumns, column, x => x);
 		},
+
+		groupIsHidden(groupedValues) {
+			for (let i = 0; groupedValues; i++) {
+				let groupedValue = groupedValues[i];
+				if (this.state.hiddenGroups[groupedValue]) {
+					return true;
+				}
+			}
+			return false;
+		},
+
+		hideGroup(joinGroupedValues) {
+			this.state.hiddenGroups[joinGroupedValues] = true;
+			this.forceUpdate();
+		},
+
+		showGroup(joinGroupedValues) {
+			this.state.hiddenGroups[joinGroupedValues] = false;
+			this.forceUpdate();
+		},
+
 
 /* FILTERING */
 		addColumForFiltering(column) {

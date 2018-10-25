@@ -52,7 +52,7 @@
 						<th class="column" 
 							:key="j"
 							v-for="(trash, j) in state.groupingColumns" 
-							:style="{ width: 30 }"></th>
+							:style="{ width: 24 }"></th>
 
 						<th  v-for="column in state.columns"
 							:key="column.id"
@@ -200,8 +200,13 @@
 					<template v-if="hasGrouped" >
 						<template v-for="(groupingItem, i) in getGroupingItems()">
 							<tr v-if="groupingItem.group" :key="i">
-								<th v-for="(trash, j) in new Array(groupingItem.level)" :key="j"></th>
-								<th :colspan="state.groupingColumns.length + state.columns.length - groupingItem.level">
+								<th v-for="(trash, j) in new Array(groupingItem.level)" 
+									:key="j" 
+									class="th-left">
+								</th>
+
+								<th :colspan="state.groupingColumns.length + state.columns.length - groupingItem.level"
+									class="th-header">
 									<slot :name="groupingItem.column.id + '-group'" 
 										:cells="getCells(items, groupingItem.column.id)"
 										:value="groupingItem.group">
@@ -209,18 +214,22 @@
 									</slot>
 								</th>
 							</tr>
-							<tr v-if="groupingItem.item" :key="i" class="lighting-row">
-								<th :colspan="groupingItem.level"></th>
-								<td v-for="column in state.columns"
-									:key="i + column.id"
-									:class="column.hidden ? 'hidden-column' : ''">
-									<slot :name="column.id + '-column'" 
-										:value="groupingItem.item[column.id]"
-										v-if="!column.hidden">
-										{{groupingItem.item[column.id]}}
-									</slot>
-								</td>
-							</tr>
+							<template v-if="!groupingItem.group">
+								<tr :key="i" class="lighting-row">
+									<th v-for="(trash, j) in new Array(groupingItem.level)" 
+										:key="j" 
+										class="th-left"></th>
+									<td v-for="column in state.columns"
+										:key="i + column.id"
+										:class="column.hidden ? 'hidden-column' : ''">
+										<slot :name="column.id + '-column'" 
+											:value="groupingItem.item[column.id]"
+											v-if="!column.hidden">
+											{{groupingItem.item[column.id]}}
+										</slot>
+									</td>
+								</tr>
+							</template>
 						</template>
 					</template>
 					
