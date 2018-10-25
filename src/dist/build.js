@@ -81,7 +81,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 10);
+/******/ 	return __webpack_require__(__webpack_require__.s = 11);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -95,11 +95,11 @@ Object.defineProperty(exports, "__esModule", {
 	value: true
 });
 
-var _vueTableFunctions = __webpack_require__(18);
+var _vueTableFunctions = __webpack_require__(19);
 
-var _vueTableData = __webpack_require__(19);
+var _vueTableData = __webpack_require__(20);
 
-var _vClickOutside = __webpack_require__(25);
+var _vClickOutside = __webpack_require__(10);
 
 var _vClickOutside2 = _interopRequireDefault(_vClickOutside);
 
@@ -339,6 +339,7 @@ exports.default = {
 		},
 		selectFilter: function selectFilter(column, mode) {
 			column.filtering.filter = this.filteringModes[mode];
+			column.filtering.filterMode = mode;
 			if (column.filtering.filter.single || column.filtering.expected) {
 				this.addColumForFiltering(column);
 			}
@@ -358,7 +359,8 @@ exports.default = {
 				column.filtering = {
 					filter: this.filteringModes.eq,
 					expected: '',
-					enabled: false
+					enabled: false,
+					filterMode: 'eq'
 				};
 			}
 			column.showFilterForm = true;
@@ -372,12 +374,12 @@ exports.default = {
 
 		/* PAGING */
 		goToPage: function goToPage(i) {
-			if (i > 0 && i <= this.state.paging.count) {
-				this.state.paging.current = i;
+			if (i > 0 && i <= this.data.paging.count) {
+				this.data.paging.current = i;
 			}
 		},
 		canShowPageNumber: function canShowPageNumber(i) {
-			var num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+			var num = Math.floor((this.data.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
 			return i >= num && i < num + this.maxCountOfPage;
 		},
 		countPage: function countPage(size) {
@@ -512,11 +514,11 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
-var _fuse = __webpack_require__(23);
+var _fuse = __webpack_require__(24);
 
 var _fuse2 = _interopRequireDefault(_fuse);
 
-var _vClickOutside = __webpack_require__(25);
+var _vClickOutside = __webpack_require__(10);
 
 var _vClickOutside2 = _interopRequireDefault(_vClickOutside);
 
@@ -1126,22 +1128,6 @@ var render = function() {
                             ? _vm.hiddenColumnSize
                             : column.width ||
                               _vm.getMinWidth(column) + _vm.minWidthBias
-                        },
-                        attrs: { draggable: "true" },
-                        on: {
-                          dragstart: function($event) {
-                            _vm.state.groupable
-                              ? _vm.columnDragStart(column, $event)
-                              : 0
-                          },
-                          dragenter: function($event) {
-                            _vm.state.groupable
-                              ? _vm.columnDragEnter(column, $event)
-                              : 0
-                          },
-                          dragend: function($event) {
-                            _vm.state.groupable ? _vm.columnDragEnd($event) : 0
-                          }
                         }
                       },
                       [
@@ -1238,7 +1224,10 @@ var render = function() {
                                     staticClass:
                                       "name hint hint--bottom hint--info",
                                     style: { width: _vm.getMinWidth(column) },
-                                    attrs: { "data-hint": column.name },
+                                    attrs: {
+                                      "data-hint": column.name,
+                                      draggable: "true"
+                                    },
                                     on: {
                                       click: [
                                         function($event) {
@@ -1262,7 +1251,22 @@ var render = function() {
                                             ? _vm.sortByMany(column)
                                             : 0
                                         }
-                                      ]
+                                      ],
+                                      dragstart: function($event) {
+                                        _vm.state.groupable
+                                          ? _vm.columnDragStart(column, $event)
+                                          : 0
+                                      },
+                                      dragenter: function($event) {
+                                        _vm.state.groupable
+                                          ? _vm.columnDragEnter(column, $event)
+                                          : 0
+                                      },
+                                      dragend: function($event) {
+                                        _vm.state.groupable
+                                          ? _vm.columnDragEnd($event)
+                                          : 0
+                                      }
                                     }
                                   },
                                   [
@@ -1485,14 +1489,52 @@ var render = function() {
                                             "div",
                                             { staticClass: "filter-window" },
                                             [
+                                              _vm._v(
+                                                "\n\t\t\t\t\t\t\t\t\t\tShow items with value that:\n\t\t\t\t\t\t\t\t\t\t"
+                                              ),
                                               _c(
                                                 "select",
                                                 {
+                                                  directives: [
+                                                    {
+                                                      name: "model",
+                                                      rawName: "v-model",
+                                                      value:
+                                                        column.filtering
+                                                          .filterMode,
+                                                      expression:
+                                                        "column.filtering.filterMode"
+                                                    }
+                                                  ],
+                                                  staticClass: "filter-mods",
                                                   on: {
                                                     input: function($event) {
                                                       _vm.selectFilter(
                                                         column,
                                                         $event.target.value
+                                                      )
+                                                    },
+                                                    change: function($event) {
+                                                      var $$selectedVal = Array.prototype.filter
+                                                        .call(
+                                                          $event.target.options,
+                                                          function(o) {
+                                                            return o.selected
+                                                          }
+                                                        )
+                                                        .map(function(o) {
+                                                          var val =
+                                                            "_value" in o
+                                                              ? o._value
+                                                              : o.value
+                                                          return val
+                                                        })
+                                                      _vm.$set(
+                                                        column.filtering,
+                                                        "filterMode",
+                                                        $event.target.multiple
+                                                          ? $$selectedVal
+                                                          : $$selectedVal[0]
                                                       )
                                                     }
                                                   }
@@ -1530,19 +1572,50 @@ var render = function() {
                                               ),
                                               _vm._v(" "),
                                               _c("input", {
-                                                on: {
-                                                  input: function($event) {
-                                                    _vm.selectValueForFilter(
-                                                      column,
-                                                      $event.target.value
-                                                    )
+                                                directives: [
+                                                  {
+                                                    name: "model",
+                                                    rawName: "v-model",
+                                                    value:
+                                                      column.filtering.epected,
+                                                    expression:
+                                                      "column.filtering.epected"
                                                   }
+                                                ],
+                                                staticClass:
+                                                  "expected-value-input",
+                                                domProps: {
+                                                  value:
+                                                    column.filtering.epected
+                                                },
+                                                on: {
+                                                  input: [
+                                                    function($event) {
+                                                      if (
+                                                        $event.target.composing
+                                                      ) {
+                                                        return
+                                                      }
+                                                      _vm.$set(
+                                                        column.filtering,
+                                                        "epected",
+                                                        $event.target.value
+                                                      )
+                                                    },
+                                                    function($event) {
+                                                      _vm.selectValueForFilter(
+                                                        column,
+                                                        $event.target.value
+                                                      )
+                                                    }
+                                                  ]
                                                 }
                                               }),
                                               _vm._v(" "),
                                               _c(
                                                 "button",
                                                 {
+                                                  staticClass: "clear-button",
                                                   on: {
                                                     click: function($event) {
                                                       _vm.removeColumForFiltering(
@@ -1763,7 +1836,7 @@ var render = function() {
           "button",
           {
             staticClass: "paging-button",
-            attrs: { disabled: _vm.state.paging.current === 1 },
+            attrs: { disabled: _vm.data.paging.current === 1 },
             on: {
               click: function($event) {
                 _vm.goToPage(1)
@@ -1782,10 +1855,10 @@ var render = function() {
           "button",
           {
             staticClass: "paging-button",
-            attrs: { disabled: _vm.state.paging.current === 1 },
+            attrs: { disabled: _vm.data.paging.current === 1 },
             on: {
               click: function($event) {
-                _vm.goToPage(_vm.state.paging.current - 1)
+                _vm.goToPage(_vm.data.paging.current - 1)
               }
             }
           },
@@ -1801,7 +1874,7 @@ var render = function() {
           "div",
           { staticClass: "paging-row" },
           [
-            _vm.state.paging.current > _vm.maxCountOfPage
+            _vm.data.paging.current > _vm.maxCountOfPage
               ? _c(
                   "button",
                   {
@@ -1810,7 +1883,7 @@ var render = function() {
                       click: function($event) {
                         _vm.goToPage(
                           Math.floor(
-                            (_vm.state.paging.current - 1) / _vm.maxCountOfPage
+                            (_vm.data.paging.current - 1) / _vm.maxCountOfPage
                           ) * _vm.maxCountOfPage
                         )
                       }
@@ -1825,7 +1898,7 @@ var render = function() {
                 )
               : _vm._e(),
             _vm._v(" "),
-            _vm._l(new Array(_vm.state.paging.count), function(item, i) {
+            _vm._l(new Array(_vm.data.paging.count), function(item, i) {
               return [
                 _vm.canShowPageNumber(i)
                   ? [
@@ -1834,7 +1907,7 @@ var render = function() {
                         {
                           staticClass: "paging-button",
                           class:
-                            i + 1 == _vm.state.paging.current ? "selected" : "",
+                            i + 1 == _vm.data.paging.current ? "selected" : "",
                           on: {
                             click: function($event) {
                               _vm.goToPage(i + 1)
@@ -1852,9 +1925,9 @@ var render = function() {
               ]
             }),
             _vm._v(" "),
-            _vm.state.paging.count != _vm.maxCountOfPage &&
-            _vm.state.paging.current <=
-              Math.floor(_vm.state.paging.count / _vm.maxCountOfPage) *
+            _vm.data.paging.count != _vm.maxCountOfPage &&
+            _vm.data.paging.current <=
+              Math.floor(_vm.data.paging.count / _vm.maxCountOfPage) *
                 _vm.maxCountOfPage
               ? _c(
                   "button",
@@ -1864,7 +1937,7 @@ var render = function() {
                       click: function($event) {
                         _vm.goToPage(
                           Math.floor(
-                            (_vm.state.paging.current - 1) / _vm.maxCountOfPage
+                            (_vm.data.paging.current - 1) / _vm.maxCountOfPage
                           ) *
                             _vm.maxCountOfPage +
                             _vm.maxCountOfPage +
@@ -1890,11 +1963,11 @@ var render = function() {
           {
             staticClass: "paging-button",
             attrs: {
-              disabled: _vm.state.paging.current === _vm.state.paging.count
+              disabled: _vm.data.paging.current === _vm.data.paging.count
             },
             on: {
               click: function($event) {
-                _vm.goToPage(_vm.state.paging.current + 1)
+                _vm.goToPage(_vm.data.paging.current + 1)
               }
             }
           },
@@ -1911,11 +1984,11 @@ var render = function() {
           {
             staticClass: "paging-button",
             attrs: {
-              disabled: _vm.state.paging.current === _vm.state.paging.count
+              disabled: _vm.data.paging.current === _vm.data.paging.count
             },
             on: {
               click: function($event) {
-                _vm.goToPage(_vm.state.paging.count)
+                _vm.goToPage(_vm.data.paging.count)
               }
             }
           },
@@ -1934,8 +2007,8 @@ var render = function() {
               {
                 name: "model",
                 rawName: "v-model",
-                value: _vm.state.paging.size,
-                expression: "state.paging.size"
+                value: _vm.data.paging.size,
+                expression: "data.paging.size"
               }
             ],
             staticClass: "paging-select",
@@ -1950,7 +2023,7 @@ var render = function() {
                     return val
                   })
                 _vm.$set(
-                  _vm.state.paging,
+                  _vm.data.paging,
                   "size",
                   $event.target.multiple ? $$selectedVal : $$selectedVal[0]
                 )
@@ -1973,16 +2046,14 @@ var render = function() {
         _c("div", { staticClass: "paging-info" }, [
           _vm._v(
             "\n\t\t\t" +
-              _vm._s(
-                (_vm.state.paging.current - 1) * _vm.state.paging.size + 1
-              ) +
+              _vm._s((_vm.data.paging.current - 1) * _vm.data.paging.size + 1) +
               " - \n\t\t\t" +
               _vm._s(
-                _vm.state.paging.size == 0 ||
-                _vm.state.paging.current * _vm.state.paging.size >
+                _vm.data.paging.size == 0 ||
+                _vm.data.paging.current * _vm.data.paging.size >
                   _vm.items.length
                   ? _vm.items.length
-                  : _vm.state.paging.current * _vm.state.paging.size
+                  : _vm.data.paging.current * _vm.data.paging.size
               ) +
               " \n\t\t\tof \n\t\t\t" +
               _vm._s(_vm.items.length) +
@@ -4432,7 +4503,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     }return Na.call(this, e, t);
   }, hn.compile = Oa, hn;
 });
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(3), __webpack_require__(12).setImmediate))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(3), __webpack_require__(13).setImmediate))
 
 /***/ }),
 /* 8 */
@@ -4754,24 +4825,89 @@ function applyToTag (styleElement, obj) {
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-__webpack_require__(11);
-
-__webpack_require__(26);
+!function (e, n) {
+  "object" == ( false ? undefined : _typeof(exports)) && "undefined" != typeof module ? module.exports = n() :  true ? !(__WEBPACK_AMD_DEFINE_FACTORY__ = (n),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.call(exports, __webpack_require__, exports, module)) :
+				__WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)) : undefined;
+}(undefined, function () {
+  var e = "ontouchstart" in window || navigator.msMaxTouchPoints > 0 ? ["touchstart", "click"] : ["click"],
+      n = [];function t(n) {
+    var t = "function" == typeof n;if (!t && "object" != (typeof n === "undefined" ? "undefined" : _typeof(n))) throw new Error("v-click-outside: Binding value must be a function or an object");return { handler: t ? n : n.handler, middleware: n.middleware || function (e) {
+        return e;
+      }, events: n.events || e };
+  }function r(e) {
+    var n = e.el,
+        t = e.event,
+        r = e.handler,
+        i = e.middleware;t.target !== n && !n.contains(t.target) && i(t, n) && r(t, n);
+  }var i = "undefined" != typeof window ? { bind: function bind(e, i) {
+      var d = t(i.value),
+          o = d.handler,
+          a = d.middleware,
+          u = { el: e, eventHandlers: d.events.map(function (n) {
+          return { event: n, handler: function handler(n) {
+              return r({ event: n, el: e, handler: o, middleware: a });
+            } };
+        }) };u.eventHandlers.forEach(function (e) {
+        return document.addEventListener(e.event, e.handler);
+      }), n.push(u);
+    }, update: function update(e, i) {
+      var d = t(i.value),
+          o = d.handler,
+          a = d.middleware,
+          u = d.events,
+          c = n.find(function (n) {
+        return n.el === e;
+      });c.eventHandlers.forEach(function (e) {
+        return document.removeEventListener(e.event, e.handler);
+      }), c.eventHandlers = u.map(function (n) {
+        return { event: n, handler: function handler(n) {
+            return r({ event: n, el: e, handler: o, middleware: a });
+          } };
+      }), c.eventHandlers.forEach(function (e) {
+        return document.addEventListener(e.event, e.handler);
+      });
+    }, unbind: function unbind(e) {
+      n.find(function (n) {
+        return n.el === e;
+      }).eventHandlers.forEach(function (e) {
+        return document.removeEventListener(e.event, e.handler);
+      });
+    }, instances: n } : {};return { install: function install(e) {
+      e.directive("click-outside", i);
+    }, directive: i };
+});
+//# sourceMappingURL=v-click-outside.min.min.min.min.umd.js.map
 
 /***/ }),
 /* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
+
+
+__webpack_require__(12);
+
+__webpack_require__(26);
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
 /* WEBPACK VAR INJECTION */(function(Vue) {
 
-var _vueTable = __webpack_require__(15);
+var _vueTable = __webpack_require__(16);
 
 var _vueTable2 = _interopRequireDefault(_vueTable);
 
-var _vueSelect = __webpack_require__(20);
+var _vueSelect = __webpack_require__(21);
 
 var _vueSelect2 = _interopRequireDefault(_vueSelect);
 
@@ -4784,7 +4920,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(7)))
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4839,7 +4975,7 @@ exports._unrefActive = exports.active = function (item) {
 };
 
 // setimmediate attaches itself to the global object
-__webpack_require__(13);
+__webpack_require__(14);
 // On some exotic environments, it's not clear which object `setimmediate` was
 // able to install onto.  Search each possibility in the same order as the
 // `setimmediate` library.
@@ -4848,7 +4984,7 @@ exports.clearImmediate = typeof self !== "undefined" && self.clearImmediate || t
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(3)))
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5036,10 +5172,10 @@ exports.clearImmediate = typeof self !== "undefined" && self.clearImmediate || t
     attachTo.setImmediate = setImmediate;
     attachTo.clearImmediate = clearImmediate;
 })(typeof self === "undefined" ? typeof global === "undefined" ? undefined : global : self);
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(3), __webpack_require__(14)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(3), __webpack_require__(15)))
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5232,7 +5368,7 @@ process.umask = function () {
 };
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -5245,7 +5381,7 @@ __webpack_require__.r(__webpack_exports__);
 var disposed = false
 function injectStyle (context) {
   if (disposed) return
-  __webpack_require__(16)
+  __webpack_require__(17)
 }
 /* script */
 
@@ -5278,13 +5414,13 @@ if (false) {}
 
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(17);
+var content = __webpack_require__(18);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
@@ -5294,7 +5430,7 @@ var update = add("5a7c2799", content, false, {});
 if(false) {}
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports = module.exports = __webpack_require__(8)(false);
@@ -5302,13 +5438,13 @@ exports = module.exports = __webpack_require__(8)(false);
 
 
 // module
-exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-enabled {\n            color: #ff9c4a;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #3349a7;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\r\n\t\t\t\t\tborder-color: #ccc;\r\n\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
+exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n  width: 100%;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-enabled {\n            color: #ff9c4a;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n            text-transform: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              width: 200px;\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .filter-mods {\n                width: 100%;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input {\n                width: 100%;\n                background: white;\n                color: #3b3b3b;\n                border-width: 0px;\n                border-bottom: 1px solid #77777750;\n                padding-bottom: 2px;\n                margin-bottom: 2px;\n                margin-top: 2px;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input:active, .vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input:focus {\n                  outline: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button {\n                width: 100%;\n                height: 20px;\n                background: white;\n                color: #3b3b3b;\n                border-width: 0;\n                border-radius: 0 0 2px 2px;\n                box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n                -webkit-transition: box-shadow 0.2s ease-out;\n                -moz-transition: box-shadow 0.2s ease-out;\n                -o-transition: box-shadow 0.2s ease-out;\n                transition: box-shadow 0.2s ease-out;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:hover {\n                  color: steelblue;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:active, .vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:focus {\n                  outline: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:active {\n                  box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.02);\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #3349a7;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        /*border-style: solid;\r\n\t\t\t\t\tborder-color: #ccc;\r\n\t\t\t\t\tborder-width: 1px 0 1px 1px;*/\n        border-bottom: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
 
 // exports
 
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5491,6 +5627,10 @@ function page(data, state) {
 		if (state.paging.size == 0) {
 			return;
 		}
+		state.paging.count = state.paging.size == 0 ? 1 : Math.ceil(data.items.length / state.paging.size) || 1;
+		if (state.paging.current > state.paging.count) {
+			state.paging.current = state.paging.count;
+		}
 		var from = state.paging.size * (state.paging.current - 1);
 		var to = state.paging.size * state.paging.current;
 		data.items = data.items.slice(from, to);
@@ -5499,7 +5639,7 @@ function page(data, state) {
 }
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5632,7 +5772,7 @@ var columnFilters = exports.columnFilters = {
 };
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -5645,7 +5785,7 @@ __webpack_require__.r(__webpack_exports__);
 var disposed = false
 function injectStyle (context) {
   if (disposed) return
-  __webpack_require__(21)
+  __webpack_require__(22)
 }
 /* script */
 
@@ -5679,13 +5819,13 @@ if (false) {}
 
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(22);
+var content = __webpack_require__(23);
 if(typeof content === 'string') content = [[module.i, content, '']];
 if(content.locals) module.exports = content.locals;
 // add the styles to the DOM
@@ -5695,7 +5835,7 @@ var update = add("c6234a14", content, false, {});
 if(false) {}
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 exports = module.exports = __webpack_require__(8)(false);
@@ -5709,7 +5849,7 @@ exports.push([module.i, "\n.segpay-btn-link[data-v-4c5661bc] {\n  padding: 0;\n}
 
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6755,10 +6895,10 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
   );
 });
 //# sourceMappingURL=fuse.js.map
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(24)(module)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(25)(module)))
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6786,71 +6926,6 @@ module.exports = function (module) {
 	}
 	return module;
 };
-
-/***/ }),
-/* 25 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-!function (e, n) {
-  "object" == ( false ? undefined : _typeof(exports)) && "undefined" != typeof module ? module.exports = n() :  true ? !(__WEBPACK_AMD_DEFINE_FACTORY__ = (n),
-				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
-				(__WEBPACK_AMD_DEFINE_FACTORY__.call(exports, __webpack_require__, exports, module)) :
-				__WEBPACK_AMD_DEFINE_FACTORY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)) : undefined;
-}(undefined, function () {
-  var e = "ontouchstart" in window || navigator.msMaxTouchPoints > 0 ? ["touchstart", "click"] : ["click"],
-      n = [];function t(n) {
-    var t = "function" == typeof n;if (!t && "object" != (typeof n === "undefined" ? "undefined" : _typeof(n))) throw new Error("v-click-outside: Binding value must be a function or an object");return { handler: t ? n : n.handler, middleware: n.middleware || function (e) {
-        return e;
-      }, events: n.events || e };
-  }function r(e) {
-    var n = e.el,
-        t = e.event,
-        r = e.handler,
-        i = e.middleware;t.target !== n && !n.contains(t.target) && i(t, n) && r(t, n);
-  }var i = "undefined" != typeof window ? { bind: function bind(e, i) {
-      var d = t(i.value),
-          o = d.handler,
-          a = d.middleware,
-          u = { el: e, eventHandlers: d.events.map(function (n) {
-          return { event: n, handler: function handler(n) {
-              return r({ event: n, el: e, handler: o, middleware: a });
-            } };
-        }) };u.eventHandlers.forEach(function (e) {
-        return document.addEventListener(e.event, e.handler);
-      }), n.push(u);
-    }, update: function update(e, i) {
-      var d = t(i.value),
-          o = d.handler,
-          a = d.middleware,
-          u = d.events,
-          c = n.find(function (n) {
-        return n.el === e;
-      });c.eventHandlers.forEach(function (e) {
-        return document.removeEventListener(e.event, e.handler);
-      }), c.eventHandlers = u.map(function (n) {
-        return { event: n, handler: function handler(n) {
-            return r({ event: n, el: e, handler: o, middleware: a });
-          } };
-      }), c.eventHandlers.forEach(function (e) {
-        return document.addEventListener(e.event, e.handler);
-      });
-    }, unbind: function unbind(e) {
-      n.find(function (n) {
-        return n.el === e;
-      }).eventHandlers.forEach(function (e) {
-        return document.removeEventListener(e.event, e.handler);
-      });
-    }, instances: n } : {};return { install: function install(e) {
-      e.directive("click-outside", i);
-    }, directive: i };
-});
-//# sourceMappingURL=v-click-outside.min.min.min.min.umd.js.map
 
 /***/ }),
 /* 26 */

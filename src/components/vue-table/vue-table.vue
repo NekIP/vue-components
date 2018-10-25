@@ -57,10 +57,6 @@
 						<th  v-for="column in state.columns"
 							:key="column.id"
 							class="column"
-							draggable="true"
-							@dragstart="state.groupable ? columnDragStart(column, $event) : 0"
-							@dragenter="state.groupable ? columnDragEnter(column, $event) : 0"
-							@dragend="state.groupable ? columnDragEnd($event) : 0"
 							:style="{ 
 								'min-width': getMinWidth(column) + minWidthBias, 
 								width: column.hidden 
@@ -94,6 +90,10 @@
 										:style="{ width: getMinWidth(column) }"
 										@click.exact="state.sortable ? sortByOne(column) : 0"
 										@click.ctrl="state.sortable ? sortByMany(column) : 0"
+										draggable="true"
+										@dragstart="state.groupable ? columnDragStart(column, $event) : 0"
+										@dragenter="state.groupable ? columnDragEnter(column, $event) : 0"
+										@dragend="state.groupable ? columnDragEnd($event) : 0"
 										v-if="!column.hidden">
 									<slot :name="column.id + '-header'"
 										  :cells="getCells(items, column.id)">
@@ -143,15 +143,21 @@
 										v-if="column.showFilterForm"
 										v-click-outside="function (a, b) { hideFilterForm(column) }">
 										<div class="filter-window">
-											<select @input="selectFilter(column, $event.target.value)">
+											Show items with value that:
+											<select @input="selectFilter(column, $event.target.value)"
+													v-model="column.filtering.filterMode"
+													class="filter-mods">
 												<option v-for="(filteringMode, filteringModeName) in filteringModes" 
 														v-if="filteringMode.type == 'all' || filteringMode.type == column.type"
 														:value="filteringModeName">
 													{{filteringMode.title}}
 												</option>
 											</select>
-											<input @input="selectValueForFilter(column, $event.target.value)"></input>
-											<button @click="removeColumForFiltering(column)">Clear</button>
+											<input 
+												class="expected-value-input"
+												@input="selectValueForFilter(column, $event.target.value)"
+												v-model="column.filtering.epected"></input>
+											<button class="clear-button" @click="removeColumForFiltering(column)">Clear</button>
 										</div>
 									</div>
 								</template>
@@ -224,47 +230,47 @@
 		<div class="paging">
 			<button class="paging-button"
 					@click="goToPage(1)" 
-					:disabled="state.paging.current === 1">
+					:disabled="data.paging.current === 1">
 				<i class="fa fa-step-backward" aria-hidden="true"></i>
 			</button>
 			<button class="paging-button" 
-					@click="goToPage(state.paging.current - 1)"  
-					:disabled="state.paging.current === 1">
+					@click="goToPage(data.paging.current - 1)"  
+					:disabled="data.paging.current === 1">
 				<i class="fa fa-caret-left" aria-hidden="true"></i>
 			</button>
 			<div class="paging-row">
 				<button class="paging-button" 
-						v-if="state.paging.current > maxCountOfPage"
-						@click="goToPage(Math.floor((state.paging.current - 1) / maxCountOfPage) * maxCountOfPage)">
+						v-if="data.paging.current > maxCountOfPage"
+						@click="goToPage(Math.floor((data.paging.current - 1) / maxCountOfPage) * maxCountOfPage)">
 					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
 				</button>
-				<template v-for="(item, i) in new Array(state.paging.count)">
+				<template v-for="(item, i) in new Array(data.paging.count)">
 					<template v-if="canShowPageNumber(i)">
 						<button class="paging-button" 
-								:class="i + 1 == state.paging.current ? 'selected' : ''"
+								:class="i + 1 == data.paging.current ? 'selected' : ''"
 								@click="goToPage(i + 1)">
 							{{i + 1}}
 						</button>
 					</template>
 				</template>
 				<button class="paging-button" 
-						v-if="state.paging.count != maxCountOfPage 
-							&& state.paging.current <= Math.floor(state.paging.count / maxCountOfPage) * maxCountOfPage"
-						@click="goToPage(Math.floor((state.paging.current - 1) / maxCountOfPage) * maxCountOfPage + maxCountOfPage + 1)">
+						v-if="data.paging.count != maxCountOfPage 
+							&& data.paging.current <= Math.floor(data.paging.count / maxCountOfPage) * maxCountOfPage"
+						@click="goToPage(Math.floor((data.paging.current - 1) / maxCountOfPage) * maxCountOfPage + maxCountOfPage + 1)">
 					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
 				</button>
 			</div>
 			<button class="paging-button" 
-					@click="goToPage(state.paging.current + 1)"
-					:disabled="state.paging.current === state.paging.count">
+					@click="goToPage(data.paging.current + 1)"
+					:disabled="data.paging.current === data.paging.count">
 				<i class="fa fa-caret-right" aria-hidden="true"></i>
 			</button>
 			<button class="paging-button"
-					@click="goToPage(state.paging.count)"
-					:disabled="state.paging.current === state.paging.count">
+					@click="goToPage(data.paging.count)"
+					:disabled="data.paging.current === data.paging.count">
 				<i class="fa fa-step-forward" aria-hidden="true"></i>
 			</button>
-			<select v-model="state.paging.size"
+			<select v-model="data.paging.size"
 					class="paging-select">
 				<option v-for="size in pageSizes" 
 						:value="size">
@@ -275,10 +281,10 @@
 				items per page
 			</div>
 			<div class="paging-info">
-				{{(state.paging.current - 1) * state.paging.size + 1}} - 
-				{{ state.paging.size == 0 || state.paging.current * state.paging.size > items.length 
+				{{(data.paging.current - 1) * data.paging.size + 1}} - 
+				{{ data.paging.size == 0 || data.paging.current * data.paging.size > items.length 
 					? items.length
-					: state.paging.current * state.paging.size }} 
+					: data.paging.current * data.paging.size }} 
 				of 
 				{{items.length}} 
 				items

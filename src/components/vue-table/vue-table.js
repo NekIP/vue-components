@@ -247,6 +247,7 @@ export default {
 
 		selectFilter(column, mode) {
 			column.filtering.filter = this.filteringModes[mode];
+			column.filtering.filterMode = mode;
 			if (column.filtering.filter.single || column.filtering.expected) {
 				this.addColumForFiltering(column);
 			}
@@ -269,7 +270,8 @@ export default {
 				column.filtering = {
 					filter: this.filteringModes.eq,
 					expected: '',
-					enabled: false
+					enabled: false,
+					filterMode: 'eq'
 				};
 			}
 			column.showFilterForm = true;
@@ -283,13 +285,13 @@ export default {
 
 /* PAGING */
 		goToPage(i) {
-			if (i > 0 && i <= this.state.paging.count) {
-				this.state.paging.current = i;
+			if (i > 0 && i <= this.data.paging.count) {
+				this.data.paging.current = i;
 			}
 		},
 
 		canShowPageNumber(i) {
-			let num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+			let num = Math.floor((this.data.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
 			return i >= num && i < num + this.maxCountOfPage;
 		},
 

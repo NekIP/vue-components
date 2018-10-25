@@ -175,6 +175,10 @@ export function page(data, state) {
 		if (state.paging.size == 0) {
 			return;
 		}
+		state.paging.count = state.paging.size == 0 ? 1 : Math.ceil(data.items.length / state.paging.size) || 1;
+		if (state.paging.current > state.paging.count) {
+			state.paging.current = state.paging.count;
+		}
 		let from = state.paging.size * (state.paging.current - 1);
 		let to = state.paging.size * state.paging.current;
 		data.items = data.items.slice(from, to);
