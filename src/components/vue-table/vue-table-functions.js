@@ -121,15 +121,35 @@ export function generateId(length = 8) {
 }
 
 export function getMinWidth(columnName) {
-	return columnName.length * 8 + 10;
+	if (screen.width < 1025) {
+		if (screen.width < 500) {
+			return columnName.length * 25 + 10; // 8
+		}
+		else {
+			return columnName.length * 8 + 10; // 8
+		}
+	}
+	else {
+		return columnName.length * 8 + 10; // 8
+	}
 }
 
 export function calculateWidth(columnName, hidable, filtrable, groupable, sortable) {
-	return getMinWidth(columnName) + 
-		(hidable ? 20 : 0) + 
-		(filtrable ? 20 : 0) + 
-		(groupable ? 30 : 0) + 
-		(sortable ? 30 : 0);
+	if (screen.width < 1025) {
+		let size = 17.5;
+		return getMinWidth(columnName) + 
+			(hidable ? 3 * size : 0) + 
+			(filtrable ? 2 * size : 0) + 
+			(groupable ? 3 * size : 0) + 
+			(sortable ? 3 * size : 0);
+	}
+	else {
+		return getMinWidth(columnName) + 
+			(hidable ? 20 : 0) + 
+			(filtrable ? 20 : 0) + 
+			(groupable ? 30 : 0) + 
+			(sortable ? 30 : 0);
+	}
 }
 
 export function getTypedValue(value, type) {

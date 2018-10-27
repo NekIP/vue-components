@@ -3,7 +3,7 @@
 		@mousemove="resizeColumn($event)"
 		@mouseup="stopResizeColumn()"
 		v-scroll="scroll">
-		<div class="false-header" :class="state.fixedHeader ? 'fixed-header' : ''">
+		<div class="false-header" :class="state.fixedHeader && false ? 'fixed-header' : ''">
 			<div class='group-area'
 					@dragenter="state.enabledGroupingArea ? columnDragEnter(groupAreaName, $event) : 0"
 					@dragend="state.enabledGroupingArea ? columnDragEnd($event) : 0">
@@ -41,7 +41,7 @@
 
 			<div class="table-container" :style="{ width: getTableWidth() }">
 				<div class="table">
-					<div class="header" v-if="state.fixedHeader">
+					<div class="header" v-if="state.fixedHeader && false">
 						<div class="column" 
 							:key="j"
 							v-for="(trash, j) in state.groupingColumns" 
@@ -361,7 +361,11 @@
 								</th>
 
 								<th :colspan="state.groupingColumns.length + state.columns.length - groupingItem.level"
-									class="th-header">
+									class="th-header"
+									@click="
+											groupingItem.hiding 
+												? showGroup(groupingItem.joinGroupedValues) 
+												: hideGroup(groupingItem.joinGroupedValues)">
 									<slot :name="groupingItem.column.id + '-group'" 
 										:cells="getCells(items, groupingItem.column.id)"
 										:value="groupingItem.group">
@@ -392,66 +396,70 @@
 			</table>
 		</div>
 		<div class="paging">
-			<button class="paging-button"
-					@click="goToPage(1)" 
-					:disabled="data.paging.current === 1">
-				<i class="fa fa-step-backward" aria-hidden="true"></i>
-			</button>
-			<button class="paging-button" 
-					@click="goToPage(data.paging.current - 1)"  
-					:disabled="data.paging.current === 1">
-				<i class="fa fa-caret-left" aria-hidden="true"></i>
-			</button>
-			<div class="paging-row">
-				<button class="paging-button" 
-						v-if="data.paging.current > maxCountOfPage"
-						@click="goToPage(Math.floor((data.paging.current - 1) / maxCountOfPage) * maxCountOfPage)">
-					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+			<div class="arrows">
+				<button class="paging-button"
+						@click="goToPage(1)" 
+						:disabled="data.paging.current === 1">
+					<i class="fa fa-step-backward" aria-hidden="true"></i>
 				</button>
-				<template v-for="(item, i) in new Array(data.paging.count)">
-					<template v-if="canShowPageNumber(i)">
-						<button class="paging-button" 
-								:class="i + 1 == data.paging.current ? 'selected' : ''"
-								@click="goToPage(i + 1)">
-							{{i + 1}}
-						</button>
+				<button class="paging-button" 
+						@click="goToPage(data.paging.current - 1)"  
+						:disabled="data.paging.current === 1">
+					<i class="fa fa-caret-left" aria-hidden="true"></i>
+				</button>
+				<div class="paging-row">
+					<button class="paging-button" 
+							v-if="data.paging.current > maxCountOfPage"
+							@click="goToPage(Math.floor((data.paging.current - 1) / maxCountOfPage) * maxCountOfPage)">
+						<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+					</button>
+					<template v-for="(item, i) in new Array(data.paging.count)">
+						<template v-if="canShowPageNumber(i)">
+							<button class="paging-button" 
+									:class="i + 1 == data.paging.current ? 'selected' : ''"
+									@click="goToPage(i + 1)">
+								{{i + 1}}
+							</button>
+						</template>
 					</template>
-				</template>
+					<button class="paging-button" 
+							v-if="data.paging.count != maxCountOfPage 
+								&& data.paging.current <= Math.floor(data.paging.count / maxCountOfPage) * maxCountOfPage"
+							@click="goToPage(Math.floor((data.paging.current - 1) / maxCountOfPage) * maxCountOfPage + maxCountOfPage + 1)">
+						<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+					</button>
+				</div>
 				<button class="paging-button" 
-						v-if="data.paging.count != maxCountOfPage 
-							&& data.paging.current <= Math.floor(data.paging.count / maxCountOfPage) * maxCountOfPage"
-						@click="goToPage(Math.floor((data.paging.current - 1) / maxCountOfPage) * maxCountOfPage + maxCountOfPage + 1)">
-					<i class="fa fa-ellipsis-h" aria-hidden="true"></i>
+						@click="goToPage(data.paging.current + 1)"
+						:disabled="data.paging.current === data.paging.count">
+					<i class="fa fa-caret-right" aria-hidden="true"></i>
+				</button>
+				<button class="paging-button"
+						@click="goToPage(data.paging.count)"
+						:disabled="data.paging.current === data.paging.count">
+					<i class="fa fa-step-forward" aria-hidden="true"></i>
 				</button>
 			</div>
-			<button class="paging-button" 
-					@click="goToPage(data.paging.current + 1)"
-					:disabled="data.paging.current === data.paging.count">
-				<i class="fa fa-caret-right" aria-hidden="true"></i>
-			</button>
-			<button class="paging-button"
-					@click="goToPage(data.paging.count)"
-					:disabled="data.paging.current === data.paging.count">
-				<i class="fa fa-step-forward" aria-hidden="true"></i>
-			</button>
-			<select v-model="data.paging.size"
-					class="paging-select">
-				<option v-for="size in pageSizes" 
-						:value="size">
-					{{size == 0 ? 'All' : size}}
-				</option>
-			</select>
-			<div class="paging-select-hint">
-				items per page
-			</div>
-			<div class="paging-info">
-				{{(data.paging.current - 1) * data.paging.size + 1}} - 
-				{{ data.paging.size == 0 || data.paging.current * data.paging.size > items.length 
-					? items.length
-					: data.paging.current * data.paging.size }} 
-				of 
-				{{items.length}} 
-				items
+			<div class="hints">
+				<select v-model="data.paging.size"
+						class="paging-select">
+					<option v-for="size in pageSizes" 
+							:value="size">
+						{{size == 0 ? 'All' : size}}
+					</option>
+				</select>
+				<div class="paging-select-hint">
+					items per page
+				</div>
+				<div class="paging-info">
+					{{(data.paging.current - 1) * data.paging.size + 1}} - 
+					{{ data.paging.size == 0 || data.paging.current * data.paging.size > items.length 
+						? items.length
+						: data.paging.current * data.paging.size }} 
+					of 
+					{{items.length}} 
+					items
+				</div>
 			</div>
 		</div>
 	</div>

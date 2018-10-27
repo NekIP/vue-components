@@ -16,6 +16,12 @@ $rotate-angle: 180deg;
 	div.vertical {
 		letter-spacing: 6px;
 		font-size: 14px;
+		@media screen and (max-width: 1025px) {
+			font-size: 1.9vh;
+		}
+		@media screen and (max-width: 1025px) and (orientation: landscape) {
+			font-size: 1.8vw;
+		}
 		font-weight: 600;
 		white-space:nowrap;
 		color: #c7c7c7;
@@ -44,6 +50,15 @@ $rotate-angle: 180deg;
 	}
 
 	.group-area {
+		@media screen and (min-width: 1025px) {
+			font-size: 12px;
+		}
+		@media screen and (max-width: 1025px) {
+			font-size: 1.93vh;
+		}
+		@media screen and (max-width: 1025px) and (orientation: landscape) {
+			font-size: 1.8vw;
+		}
 		background-color: #415090;
 		border-radius: 3px 3px 0 0;
 		border-color: #e6e6e6;
@@ -56,7 +71,6 @@ $rotate-angle: 180deg;
 		cursor: default;
 		display: flex;
 		flex-direction: row; 
-
 
 		.group-item {
 			display: flex;
@@ -73,11 +87,11 @@ $rotate-angle: 180deg;
 			-webkit-user-select: none;
 			text-shadow: 1px 1px rgba(0,0,0,.14);
 			cursor: pointer;
+			vertical-align: center;
 			
 			.ungroup {
 				color: rgba(200, 200, 200, 0.637);
 				margin: 4px 2px 0px 6px;
-				font-size: 14px;
 				cursor: pointer;
 
 				&:hover {
@@ -86,9 +100,9 @@ $rotate-angle: 180deg;
 			}
 
 			.sort-icon {
-				width: 15px;
-				height: 15px;
-				margin-right: 5px;
+				width: 1em;
+				height: 1em;
+				margin-right: 0.5em;
 				padding: 4px 5px 0 2px;
 			}
 		}
@@ -96,8 +110,15 @@ $rotate-angle: 180deg;
 
 	.paging {
 		padding-top: 3px;
+		padding-bottom: 1em;
+		@media screen and (max-width: 1025px) {
+			font-size: 1.65vh;
+		}
+		@media screen and (max-width: 1025px) and (orientation: landscape) {
+			font-size: 1.6vw;
+		}
 		width: 100%;
-		height: 40px;
+		height: auto;
 		color: #444;
 		padding-left: 20px;
 		background-color: #fafafa;
@@ -105,7 +126,6 @@ $rotate-angle: 180deg;
 		border-color: #e6e6e6;
 		-webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
 		box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
-		line-height: 2.3em;
 		border-width: 1px;
 		white-space: normal;
 		clear: both;
@@ -113,78 +133,116 @@ $rotate-angle: 180deg;
 		border-style: solid;
 		display: flex;
 		flex-direction: row;
+		flex-wrap: wrap;
 
-		.paging-select {
-			height: 29px;
-			border-width: 0px;
-			border-top: 1px solid #3348a700;
-			border-left: 1px solid #86868691;
-			padding-left: 15px;
-			border-radius: 0px 0px 3px 3px;
-			background: rgba(255, 255, 255, 0);
-			font-size: 15px;
-			flex-grow: 0;
-
-			&:hover {
-				background: rgba(233, 233, 233, 0.555);
+		.arrows {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			@media screen and (min-width: 1025px) {
+				flex-grow: 1;
+			}
+			@media screen and (max-width: 1025px) {
+				flex-grow: 3;
+				justify-content: space-evenly;
 			}
 
-			&:focus {
-				outline: 0;
-				background: rgb(255, 255, 255);
-			}
-
-			option:hover {
-				background: red;
-				color: rgb(255, 255, 255);
+			.paging-button {
+				width: 2.5em;
+				@media screen and (max-width: 1025px) {
+					flex-grow: 3;
+					justify-content: space-evenly;
+					width: 2em;
+				}
+				@media screen and (max-width: 400px) {
+					flex-grow: 3;
+					justify-content: space-evenly;
+					width: 1em;
+				}
+				height: 2.5em;
+				padding: 0.25em 0.25em 0.25em 0.25em;
+				border-width: 0px;
+				border-top: 1px solid #3348a700;
+				border-radius: 0px 0px 3px 3px;
+				background: rgba(255, 255, 255, 0);
+				-webkit-box-shadow: none;
+				box-shadow: none;
+				flex-grow: 0;
+	
+				&.selected {
+					border-top: 1px solid #3349a7;
+					background: rgba(233, 233, 233, 0.555);
+				}
+	
+				&:hover {
+					background: rgba(233, 233, 233, 0.555);
+				}
+	
+				&:disabled,
+				&[disabled] {
+					color: #c7c7c7;
+				}
+	
+				&:focus {
+					outline:0;
+				}
 			}
 		}
 
-		.paging-button {
-			width: 29px;
-			height: 29px;
-			border-width: 0px;
-			border-top: 1px solid #3348a700;
-			border-radius: 0px 0px 3px 3px;
-			background: rgba(255, 255, 255, 0);
-			-webkit-box-shadow: none;
-			box-shadow: none;
-			flex-grow: 0;
 
-			&.selected {
-				border-top: 1px solid #3349a7;
-				background: rgba(233, 233, 233, 0.555);
+		.hints {
+			display: flex;
+			flex-direction: row;
+			@media screen and (min-width: 1025px) {
+				flex-grow: 16;
+			}
+			@media screen and (max-width: 1025px) {
+				flex-grow: 12;
 			}
 
-			&:hover {
-				background: rgba(233, 233, 233, 0.555);
+			.paging-select-hint {
+				padding-top: 5px;
+				font-size: 1.2em;
+				font-weight: 400;
+				color: #666666;
+				vertical-align: center;
 			}
 
-			&:disabled,
-			&[disabled] {
-				color: #c7c7c7;
+			.paging-info {
+				padding-top: 0.35em;
+				padding-right: 30px;
+				font-weight: 400;
+				color: #9b9b9b;
+				text-align: right;
+				flex-grow: 2;
+				vertical-align: center;
 			}
 
-			&:focus {
-				outline:0;
+			.paging-select {
+				height: auto;
+				border-width: 0px;
+				border-top: 1px solid #3348a700;
+				border-left: 1px solid #86868691;
+				padding-left: 15px;
+				border-radius: 0px 0px 0.2em 0.2em;
+				background: rgba(255, 255, 255, 0);
+				font-size: 1.25em;
+				flex-grow: 0;
+	
+				&:hover {
+					background: rgba(233, 233, 233, 0.555);
+				}
+	
+				&:focus {
+					outline: 0;
+					background: rgb(255, 255, 255);
+				}
+	
+				option:hover {
+					background: red;
+					color: rgb(255, 255, 255);
+				}
 			}
-		}
-
-		.paging-select-hint {
-			padding-top: 1px;
-			font-size: 14px;
-			font-weight: 400;
-			color: #666666;
-			flex-grow: 1;
-		}
-
-		.paging-info {
-			padding-top: 1px;
-			padding-right: 30px;
-			font-size: 12px;
-			font-weight: 400;
-			color: #9b9b9b;
-			flex-grow: 0;
 		}
 	}
 
@@ -199,6 +257,12 @@ $rotate-angle: 180deg;
 			table-layout: fixed;
 			font-family: 'Open Sans', sans-serif;
 			font-size: 12px;
+			@media screen and (max-width: 1025px) {
+				font-size: 1.6vh;
+			}
+			@media screen and (max-width: 1025px) and (orientation: landscape) {
+				font-size: 1.6vw;
+			}
 			margin-bottom: 0px;
 			border-right: 1px solid #77777750;
 			border-left: 1px solid #77777750;	
@@ -224,8 +288,8 @@ $rotate-angle: 180deg;
 						padding: 0px;
 
 						.rol-up {
-							padding: 0 5px 0 0;
-							font-size: 15px;
+							padding: 0 0.5em 0 0;
+							font-size: 1.2em;
 
 							&:hover {
 								color: #415090;
@@ -243,7 +307,7 @@ $rotate-angle: 180deg;
 						}
 
 						.filter {
-							font-size: 16px;
+							font-size: 1.2em;
 
 							&:hover {
 								color: #415090;
@@ -319,7 +383,7 @@ $rotate-angle: 180deg;
 						}
 
 						.group {
-							font-size: 16px;
+							font-size: 1.2em;
 							margin: 0 5px 0 0;
 						}
 
@@ -350,6 +414,7 @@ $rotate-angle: 180deg;
 						width: 100%;
 
 						.hint {
+							font-size: 1.2em;
 							display: inline-block;
 							position: absolute;
 							top: 2px;
@@ -441,6 +506,12 @@ $rotate-angle: 180deg;
 				td {
 					line-height: 1em;
 					font-size: 11px;
+					@media screen and (max-width: 1025px) {
+						font-size: 1.6vh;
+					}
+					@media screen and (max-width: 1025px) and (orientation: landscape) {
+						font-size: 1.6vw;
+					}
 					padding: .4em .6em;
 					overflow: hidden;
 					vertical-align: middle;
@@ -470,7 +541,11 @@ $rotate-angle: 180deg;
 				.th-left {
 					border-left: 1px solid #ccc;
 					font-size: 16px;
+					@media screen and (max-width: 1025px) {
+						font-size: 1.3em;
+					}
 					text-align: right;
+					color: rgb(126, 126, 126);
 
 					.hide-group {
 						width: 15px;

@@ -1,4 +1,4 @@
-import { removeItemInArray, getColumns, getMinWidth, sort, group, filter, page } from './vue-table-functions'
+import { removeItemInArray, getColumns, getMinWidth, calculateWidth, sort, group, filter, page } from './vue-table-functions'
 import { columnFilters } from './vue-table-data';
 import vClickOutside from 'v-click-outside'
 
@@ -122,7 +122,7 @@ export default {
 			filteringModes: columnFilters,
 			groupAreaName: '*group-area*',
 			minWidthBias: 100,
-			hiddenColumnSize: 20,
+			hiddenColumnSize: screen.width < 1025 ? 40 : 20,
 			maxCountOfPage: 5
 		}
 	},
@@ -135,6 +135,17 @@ export default {
 			this.resizable,
 			this.movable,
 			this.hidable);
+		let self = this;
+		window.onresize = function (event) {
+			for (let i = 0; i < self.state.columns.length; i++) {
+				let column = self.state.columns[i];
+				column.width = calculateWidth(column.name, 
+					column.hidable, 
+					column.filtrable, 
+					column.groupable, 
+					column.sortable);
+			}
+		}
 	},
 	watch: {
 		'state.paging.size': function(size) {
