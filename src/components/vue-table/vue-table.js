@@ -262,6 +262,15 @@ export default {
 			this.forceUpdate();
 		},
 
+		changeGroupingOrder() {
+			let groupingColumn = this.state.groupingColumns.map(x => x);
+			for (let i = this.state.groupingColumns.length - 1; i >= 0; i--) {
+				this.removeColumForGrouping(this.state.groupingColumns[i]);
+			}
+			for (let i in groupingColumn) {
+				this.addColumForGrouping(groupingColumn[i]);
+			}
+		},
 
 /* FILTERING */
 		addColumForFiltering(column) {
@@ -364,12 +373,12 @@ export default {
 		},
 
 /* MOVING */
-		moveColumn(from, to) {
-			let indexOfDragable = this.state.columns.indexOf(from);
-			let indexOfDropable = this.state.columns.indexOf(to);
+		move(from, to, array) {
+			let indexOfDragable = array.indexOf(from);
+			let indexOfDropable = array.indexOf(to);
 			if (indexOfDropable > -1) {
-				this.state.columns.splice(indexOfDragable, 1);
-				this.state.columns.splice(indexOfDropable, 0, from);
+				array.splice(indexOfDragable, 1);
+				array.splice(indexOfDropable, 0, from);
 			}
 		},
 
@@ -432,15 +441,11 @@ export default {
 						this.addColumForGrouping(dragableColumn);
 					}
 					else if (groupMove) {
-						let [i1, i2] = [this.state.groupingColumns.indexOf(dragableColumn), 
-							this.state.groupingColumns.indexOf(dropableColumn)];
-						console.log(dragableColumn);
-						console.log(dropableColumn);
-						[this.state.groupingColumns[i1], this.state.groupingColumns[i2]] = 
-							[this.state.groupingColumns[i2], this.state.groupingColumns[i1]];
+						this.move(dragableColumn, dropableColumn, this.state.groupingColumns);
+						this.changeGroupingOrder();
 					}
 					else {
-						this.moveColumn(dragableColumn, dropableColumn);
+						this.move(dragableColumn, dropableColumn, this.state.columns);
 					}
 				}
 				this.state.moving.dragable = null;

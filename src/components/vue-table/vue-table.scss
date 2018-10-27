@@ -450,9 +450,13 @@ $rotate-angle: 180deg;
 					font-size: 16px;
 					text-align: right;
 
-					i {
-						width: 20px;
+					.hide-group {
+						width: 15px;
 						height: 20px;
+					}
+
+					.hide-group:hover {
+						color: sandybrown;
 					}
 				}
 

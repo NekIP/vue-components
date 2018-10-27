@@ -214,14 +214,14 @@
 												? showGroup(groupingItem.joinGroupedValues) 
 												: hideGroup(groupingItem.joinGroupedValues)">
 											<transition name="sort-ascending" mode="out-in">
-												<i  class="fa fa-caret-left" 
+												<i  class="fa fa-caret-left hide-group" 
 													role="button"
 													aria-hidden="true"
 													title="Hide group"
 													v-show="!groupingItem.hiding"></i>
 											</transition>
 											<transition name="sort-descending" mode="out-in">
-												<i  class="fa fa-caret-right" 
+												<i  class="fa fa-caret-right hide-group" 
 													role="button"
 													aria-hidden="true"
 													title="Show group"
