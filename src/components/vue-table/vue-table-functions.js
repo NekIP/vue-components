@@ -109,17 +109,6 @@ export function getColumns( columns,
 	})
 }
 
-export function generateId(length = 8) {
-	let ts = (+new Date).toString();
-	let parts = ts.split("").reverse();
-	let id = "";
-	for (let i = 0; i < length; i++) {
-	   let index = _getRandomInt(0, parts.length - 1);
-	   id += parts[index];	 
-	}
-	return id;
-}
-
 export function getMinWidth(columnName) {
 	if (screen.width < 1025) {
 		if (screen.width < 500) {

@@ -28,7 +28,10 @@
 					{{ (selectedIds.length == 1) ? selectedIds[0] : `count: ${selectedIds.length}`}}
 				</span>
 			</vue-select>
-
+			<div v-if="showChart">
+				<vue-chart :data="getDataForChart()" :typeXAxis="'time'"></vue-chart>
+			</div>
+			<button @click="showChart = true">test data draw</button>
 			<vue-table
 				:items="data"
 				:columns="columns"

@@ -105,10 +105,11 @@ let app = new Vue({
                     }   
                 ]
             }             
-        ]
+        ],
+        showChart: false
     },
     created: function() {
-        this.addRandomData(1000); // cols.reduce((a, b) => a + b, 0)
+        this.addRandomData(100); // cols.reduce((a, b) => a + b, 0)
     },
     methods: {
         addRandomData: function (count) {
@@ -162,5 +163,14 @@ let app = new Vue({
             var things = ['my-little-pony', 'dot', 'test', 'best-way', 'PAY'];
             return things[Math.floor(Math.random() * things.length)] + '.com';
         },
+
+        getDataForChart() {
+            let result = [];
+            for (let i in this.data) {
+                result.push({ x: new Date(Date.parse(this.data[i].date)), y: this.data[i].amount});
+            }
+            result.sort((a, b) => a.x > b.x ? 1 : a.x < b.x ? -1 : 0);
+            return result;
+        }
     }
 })
