@@ -5,6 +5,16 @@ $rotate-angle: 180deg;
 	font-family: 'Open Sans', sans-serif;
 	font-size: 12px;
 
+	[draggable] {
+		-moz-user-select: none;
+		-khtml-user-select: none;
+		-webkit-user-select: none;
+		user-select: none;
+		/* Required to make elements draggable in old WebKit */
+		-khtml-user-drag: element;
+		-webkit-user-drag: element;
+	}
+
 	div.vertical {
 		transform: rotate(90deg);
 		-webkit-transform: rotate(90deg); /* Safari/Chrome */
@@ -558,7 +568,7 @@ $rotate-angle: 180deg;
 				}
 
 				.lighting-row:hover {
-					td {
+					.cell {
 						background-color: #ececec;
 					}
 				}

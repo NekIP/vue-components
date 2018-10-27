@@ -320,7 +320,7 @@
 								v-if="!column.hidden || i == 0"
 								:key="i + column.id"
 								:rowspan="column.hidden ? state.paging.size : 1"
-								:class="column.hidden ? 'hidden-column' : ''">
+								:class="column.hidden ? 'hidden-column' : 'cell'">
 								<slot :name="column.id + '-column'" 
 									:value="item[column.id]"
 									v-if="!column.hidden">
@@ -380,7 +380,7 @@
 										class="th-left"></th>
 									<td v-for="column in state.columns"
 										:key="i + column.id"
-										:class="column.hidden ? 'hidden-column' : ''">
+										:class="column.hidden ? 'hidden-column' : 'cell'">
 										<slot :name="column.id + '-column'" 
 											:value="groupingItem.item[column.id]"
 											v-if="!column.hidden">

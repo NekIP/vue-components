@@ -437,6 +437,7 @@ export default {
 
 /* DRAG AND DROP */
 		columnDragStart(column, event, enabledGroupingArea = true) {
+			event.dataTransfer.setData('text/plain', 'anything');
 			this.state.enabledGroupingArea = enabledGroupingArea;
 			if (!this.state.resizing.column) {
 				this.state.moving.dragable = column;
