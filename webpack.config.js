@@ -33,7 +33,17 @@ module.exports = {
             },
             {
                 test: /.js$/,
-                use: 'babel-loader'
+                /*use: 'babel-loader',*/
+                exclude: /node_modules/,
+                /*loaders: ['babel-preset-es2015', 'babel-preset-stage-0', 'babel-preset-vue']*/
+                use: [
+                    {
+                        loader: 'babel-loader',
+                        options: {
+                            presets: ['env', 'es2015', 'stage-0', 'vue']
+                        }
+                    }
+                ]
             },
             {
                 test: /\.css$/,
@@ -66,6 +76,7 @@ module.exports = {
             }
         ]
     },
+    devtool: 'source-map',
     plugins: [
         /*new VueLoaderPlugin(),*/
         cssExtractor,
@@ -80,8 +91,8 @@ module.exports = {
         minimizer: [
             /*new UglifyJsPlugin({
                 uglifyOptions: {
-                    beautify: false,
-                    comments: false,
+                    beautify: true,
+                    comments: true,
                     compress: {
                         sequences     : true,
                         booleans      : true,
