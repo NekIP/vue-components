@@ -89,7 +89,7 @@ module.exports = {
     ],
     optimization: {
         minimizer: [
-            /*new UglifyJsPlugin({
+            new UglifyJsPlugin({
                 uglifyOptions: {
                     beautify: true,
                     comments: true,
@@ -103,7 +103,7 @@ module.exports = {
                         unsafe      : true
                     }
                 }
-            })*/
+            })
         ]
     }
 };

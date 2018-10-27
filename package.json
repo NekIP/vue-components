@@ -7,7 +7,9 @@
     "watch": "webpack --watch"
   },
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
     "chart.js": "^2.7.3",
+    "es6-promise": "^4.2.5",
     "fuse.js": "^3.2.1",
     "v-click-outside": "^2.0.1",
     "vue": "*"
