@@ -21,6 +21,28 @@ $rotate-angle: 180deg;
 		color: #c7c7c7;
 	}
 
+	.fixed-header {
+		position: fixed;
+		top: 0;
+		z-index: 1000;
+	}
+
+	.false-header {
+		width: 100%;
+		overflow: visible;
+
+		.table-container {
+			min-height: 0px;
+			overflow: visible;
+
+			.header {
+				display: flex;
+				flex-direction: row;
+				overflow: visible;
+			}
+		}
+	}
+
 	.group-area {
 		background-color: #415090;
 		border-radius: 3px 3px 0 0;

@@ -107,7 +107,17 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 exports.default = {
 	directives: {
-		clickOutside: _vClickOutside2.default.directive
+		clickOutside: _vClickOutside2.default.directive,
+		scroll: {
+			inserted: function inserted(el, binding) {
+				var f = function f(evt) {
+					if (binding.value(evt, el)) {
+						window.removeEventListener('scroll', f);
+					}
+				};
+				window.addEventListener('scroll', f);
+			}
+		}
 	},
 	name: 'report-table',
 	props: {
@@ -203,6 +213,7 @@ exports.default = {
 					current: 1
 				},
 
+				fixedHeader: false,
 				recalculate: 1
 			},
 			gates: [_vueTableFunctions.filter, _vueTableFunctions.sort, _vueTableFunctions.group, _vueTableFunctions.page],
@@ -489,7 +500,10 @@ exports.default = {
 			return result;
 		},
 		getMinWidth: function getMinWidth(column) {
-			return column.name.length * 6 + 10;
+			return (0, _vueTableFunctions.getMinWidth)(column.name);
+		},
+		getColumnSizeById: function getColumnSizeById(columnId) {
+			return document.getElementById(columnId + "Column");
 		},
 
 
@@ -548,8 +562,23 @@ exports.default = {
 			return result;
 		},
 		forceUpdate: function forceUpdate() {
-			this.state.recalculate = -this.state.recalculate;
+			var hard = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
+			if (hard) {
+				this.state.recalculate = -this.state.recalculate;
+			}
 			this.$forceUpdate();
+		},
+		scroll: function scroll(evt, el) {
+			if (window.scrollY > el.offsetTop) {
+				this.state.fixedHeader = true;
+			} else {
+				this.state.fixedHeader = false;
+			}
+			if (this.state.fixedHeaderCache !== this.state.fixedHeader) {
+				this.forceUpdate(false);
+			}
+			this.state.fixedHeaderCache = this.state.fixedHeader;
 		}
 	}
 };
@@ -995,7 +1024,15 @@ var render = function() {
   return _c(
     "div",
     {
-      staticClass: "vue-table col-sm-12",
+      directives: [
+        {
+          name: "scroll",
+          rawName: "v-scroll",
+          value: _vm.scroll,
+          expression: "scroll"
+        }
+      ],
+      staticClass: "vue-table col-lg-12",
       on: {
         mousemove: function($event) {
           _vm.resizeColumn($event)
@@ -1009,137 +1046,780 @@ var render = function() {
       _c(
         "div",
         {
-          staticClass: "group-area",
-          on: {
-            dragenter: function($event) {
-              _vm.state.enabledGroupingArea
-                ? _vm.columnDragEnter(_vm.groupAreaName, $event)
-                : 0
-            },
-            dragend: function($event) {
-              _vm.state.enabledGroupingArea ? _vm.columnDragEnd($event) : 0
-            }
-          }
+          staticClass: "false-header",
+          class: _vm.state.fixedHeader ? "fixed-header" : ""
         },
         [
-          _vm._l(_vm.state.groupingColumns, function(groupingColumn) {
-            return _c(
-              "div",
-              {
-                key: groupingColumn.key,
-                staticClass: "group-item",
-                attrs: { draggable: "true" },
-                on: {
-                  click: function($event) {
-                    _vm.sortByMany(groupingColumn)
-                  },
-                  dragstart: function($event) {
-                    _vm.columnDragStart(
-                      groupingColumn,
-                      $event,
-                      (_vm.enabledGroupingArea = false)
-                    )
-                  },
-                  dragenter: function($event) {
-                    _vm.columnDragEnter(groupingColumn, $event)
-                  },
-                  dragend: function($event) {
-                    _vm.columnDragEnd($event, "type: groupMove")
-                  }
+          _c(
+            "div",
+            {
+              staticClass: "group-area",
+              on: {
+                dragenter: function($event) {
+                  _vm.state.enabledGroupingArea
+                    ? _vm.columnDragEnter(_vm.groupAreaName, $event)
+                    : 0
+                },
+                dragend: function($event) {
+                  _vm.state.enabledGroupingArea ? _vm.columnDragEnd($event) : 0
                 }
-              },
-              [
-                _c("div", { staticClass: "sort-icon" }, [
-                  _c(
-                    "span",
-                    {
-                      directives: [
-                        {
-                          name: "show",
-                          rawName: "v-show",
-                          value: groupingColumn.sortingDirection,
-                          expression: "groupingColumn.sortingDirection"
-                        }
-                      ]
-                    },
-                    [
-                      _c(
-                        "transition",
-                        { attrs: { name: "sort-ascending", mode: "out-in" } },
-                        [
-                          _c("i", {
-                            directives: [
-                              {
-                                name: "show",
-                                rawName: "v-show",
-                                value: groupingColumn.sortingDirection == 1,
-                                expression:
-                                  "groupingColumn.sortingDirection == 1"
-                              }
-                            ],
-                            staticClass: "fa fa-arrow-up arrow",
-                            attrs: { "aria-hidden": "true" }
-                          })
-                        ]
-                      ),
-                      _vm._v(" "),
-                      _c(
-                        "transition",
-                        { attrs: { name: "sort-descending", mode: "out-in" } },
-                        [
-                          _c("i", {
-                            directives: [
-                              {
-                                name: "show",
-                                rawName: "v-show",
-                                value: groupingColumn.sortingDirection == -1,
-                                expression:
-                                  "groupingColumn.sortingDirection == -1"
-                              }
-                            ],
-                            staticClass: "fa fa-arrow-down arrow",
-                            attrs: { "aria-hidden": "true" }
-                          })
-                        ]
-                      )
-                    ],
-                    1
-                  )
-                ]),
-                _vm._v("\n\t\t\t" + _vm._s(groupingColumn.name) + "\n\t\t\t"),
-                _c(
+              }
+            },
+            [
+              _vm._l(_vm.state.groupingColumns, function(groupingColumn) {
+                return _c(
                   "div",
                   {
-                    staticClass: "ungroup",
+                    key: groupingColumn.key,
+                    staticClass: "group-item",
+                    attrs: { draggable: "true" },
                     on: {
                       click: function($event) {
-                        _vm.removeColumForGrouping(groupingColumn)
+                        _vm.sortByMany(groupingColumn)
+                      },
+                      dragstart: function($event) {
+                        _vm.columnDragStart(
+                          groupingColumn,
+                          $event,
+                          (_vm.enabledGroupingArea = false)
+                        )
+                      },
+                      dragenter: function($event) {
+                        _vm.columnDragEnter(groupingColumn, $event)
+                      },
+                      dragend: function($event) {
+                        _vm.columnDragEnd($event, "type: groupMove")
                       }
                     }
                   },
                   [
-                    _c("i", {
-                      staticClass: "fa fa-times",
-                      attrs: { "aria-hidden": "true" }
-                    })
+                    _c("div", { staticClass: "sort-icon" }, [
+                      _c(
+                        "span",
+                        {
+                          directives: [
+                            {
+                              name: "show",
+                              rawName: "v-show",
+                              value: groupingColumn.sortingDirection,
+                              expression: "groupingColumn.sortingDirection"
+                            }
+                          ]
+                        },
+                        [
+                          _c(
+                            "transition",
+                            {
+                              attrs: { name: "sort-ascending", mode: "out-in" }
+                            },
+                            [
+                              _c("i", {
+                                directives: [
+                                  {
+                                    name: "show",
+                                    rawName: "v-show",
+                                    value: groupingColumn.sortingDirection == 1,
+                                    expression:
+                                      "groupingColumn.sortingDirection == 1"
+                                  }
+                                ],
+                                staticClass: "fa fa-arrow-up arrow",
+                                attrs: { "aria-hidden": "true" }
+                              })
+                            ]
+                          ),
+                          _vm._v(" "),
+                          _c(
+                            "transition",
+                            {
+                              attrs: { name: "sort-descending", mode: "out-in" }
+                            },
+                            [
+                              _c("i", {
+                                directives: [
+                                  {
+                                    name: "show",
+                                    rawName: "v-show",
+                                    value:
+                                      groupingColumn.sortingDirection == -1,
+                                    expression:
+                                      "groupingColumn.sortingDirection == -1"
+                                  }
+                                ],
+                                staticClass: "fa fa-arrow-down arrow",
+                                attrs: { "aria-hidden": "true" }
+                              })
+                            ]
+                          )
+                        ],
+                        1
+                      )
+                    ]),
+                    _vm._v(
+                      "\n\t\t\t\t" + _vm._s(groupingColumn.name) + "\n\t\t\t\t"
+                    ),
+                    _c(
+                      "div",
+                      {
+                        staticClass: "ungroup",
+                        on: {
+                          click: function($event) {
+                            _vm.removeColumForGrouping(groupingColumn)
+                          }
+                        }
+                      },
+                      [
+                        _c("i", {
+                          staticClass: "fa fa-times",
+                          attrs: { "aria-hidden": "true" }
+                        })
+                      ]
+                    )
                   ]
                 )
-              ]
-            )
-          }),
+              }),
+              _vm._v(" "),
+              !_vm.hasGrouped
+                ? [
+                    _vm._v(
+                      "\n\t\t\t\tDrag a column header and drop it here to group by that column\n\t\t\t"
+                    )
+                  ]
+                : _vm._e()
+            ],
+            2
+          ),
           _vm._v(" "),
-          !_vm.hasGrouped
-            ? [
-                _vm._v(
-                  "\n\t\t\tDrag a column header and drop it here to group by that column\n\t\t"
-                )
-              ]
-            : _vm._e()
-        ],
-        2
+          _c(
+            "div",
+            {
+              staticClass: "table-container",
+              style: { width: _vm.getTableWidth() }
+            },
+            [
+              _c("div", { staticClass: "table" }, [
+                _vm.state.fixedHeader
+                  ? _c(
+                      "div",
+                      { staticClass: "header" },
+                      [
+                        _vm._l(_vm.state.groupingColumns, function(trash, j) {
+                          return _c("div", {
+                            key: j,
+                            staticClass: "column",
+                            style: { width: 24 }
+                          })
+                        }),
+                        _vm._v(" "),
+                        _vm._l(_vm.state.columns, function(column) {
+                          return _c(
+                            "div",
+                            {
+                              key: column.id,
+                              staticClass: "column",
+                              style: {
+                                width: column.hidden
+                                  ? _vm.hiddenColumnSize
+                                  : column.width ||
+                                    _vm.getMinWidth(column) + _vm.minWidthBias
+                              }
+                            },
+                            [
+                              _c(
+                                "div",
+                                { staticClass: "container" },
+                                [
+                                  _vm.state.hidable
+                                    ? [
+                                        _c(
+                                          "div",
+                                          {
+                                            staticClass: "rol-up",
+                                            on: {
+                                              click: function($event) {
+                                                column.hidden
+                                                  ? _vm.showColumn(
+                                                      column,
+                                                      $event
+                                                    )
+                                                  : _vm.hideColumn(
+                                                      column,
+                                                      $event
+                                                    )
+                                              }
+                                            }
+                                          },
+                                          [
+                                            _c(
+                                              "transition",
+                                              {
+                                                attrs: {
+                                                  name: "sort-ascending",
+                                                  mode: "out-in"
+                                                }
+                                              },
+                                              [
+                                                _c("i", {
+                                                  directives: [
+                                                    {
+                                                      name: "show",
+                                                      rawName: "v-show",
+                                                      value: !column.hidden,
+                                                      expression:
+                                                        "!column.hidden"
+                                                    }
+                                                  ],
+                                                  staticClass:
+                                                    "fa fa-caret-left",
+                                                  attrs: {
+                                                    role: "button",
+                                                    "aria-hidden": "true",
+                                                    title:
+                                                      "Hide column '" +
+                                                      column.name +
+                                                      "'"
+                                                  }
+                                                })
+                                              ]
+                                            ),
+                                            _vm._v(" "),
+                                            _c(
+                                              "transition",
+                                              {
+                                                attrs: {
+                                                  name: "sort-descending",
+                                                  mode: "out-in"
+                                                }
+                                              },
+                                              [
+                                                _c("i", {
+                                                  directives: [
+                                                    {
+                                                      name: "show",
+                                                      rawName: "v-show",
+                                                      value: column.hidden,
+                                                      expression:
+                                                        "column.hidden"
+                                                    }
+                                                  ],
+                                                  staticClass:
+                                                    "fa fa-caret-right",
+                                                  attrs: {
+                                                    role: "button",
+                                                    "aria-hidden": "true",
+                                                    title:
+                                                      "Show column '" +
+                                                      column.name +
+                                                      "'"
+                                                  }
+                                                })
+                                              ]
+                                            )
+                                          ],
+                                          1
+                                        )
+                                      ]
+                                    : _vm._e(),
+                                  _vm._v(" "),
+                                  !column.hidden
+                                    ? _c(
+                                        "div",
+                                        {
+                                          staticClass:
+                                            "name hint hint--bottom hint--info",
+                                          style: {
+                                            width: _vm.getMinWidth(column)
+                                          },
+                                          attrs: {
+                                            "data-hint": column.name,
+                                            draggable: "true"
+                                          },
+                                          on: {
+                                            click: [
+                                              function($event) {
+                                                if (
+                                                  $event.ctrlKey ||
+                                                  $event.shiftKey ||
+                                                  $event.altKey ||
+                                                  $event.metaKey
+                                                ) {
+                                                  return null
+                                                }
+                                                _vm.state.sortable
+                                                  ? _vm.sortByOne(column)
+                                                  : 0
+                                              },
+                                              function($event) {
+                                                if (!$event.ctrlKey) {
+                                                  return null
+                                                }
+                                                _vm.state.sortable
+                                                  ? _vm.sortByMany(column)
+                                                  : 0
+                                              }
+                                            ],
+                                            dragstart: function($event) {
+                                              _vm.state.groupable
+                                                ? _vm.columnDragStart(
+                                                    column,
+                                                    $event
+                                                  )
+                                                : 0
+                                            },
+                                            dragenter: function($event) {
+                                              _vm.state.groupable
+                                                ? _vm.columnDragEnter(
+                                                    column,
+                                                    $event
+                                                  )
+                                                : 0
+                                            },
+                                            dragend: function($event) {
+                                              _vm.state.groupable
+                                                ? _vm.columnDragEnd($event)
+                                                : 0
+                                            }
+                                          }
+                                        },
+                                        [
+                                          _vm._t(
+                                            column.id + "-header",
+                                            [
+                                              _vm._v(
+                                                "\n\t\t\t\t\t\t\t\t\t\t" +
+                                                  _vm._s(column.name) +
+                                                  "\n\t\t\t\t\t\t\t\t\t"
+                                              )
+                                            ],
+                                            {
+                                              cells: _vm.getCells(
+                                                _vm.items,
+                                                column.id
+                                              )
+                                            }
+                                          ),
+                                          _vm._v(" "),
+                                          _vm.state.sortable
+                                            ? [
+                                                _c(
+                                                  "span",
+                                                  {
+                                                    directives: [
+                                                      {
+                                                        name: "show",
+                                                        rawName: "v-show",
+                                                        value:
+                                                          column.sortingDirection,
+                                                        expression:
+                                                          "column.sortingDirection"
+                                                      }
+                                                    ]
+                                                  },
+                                                  [
+                                                    _c(
+                                                      "transition",
+                                                      {
+                                                        attrs: {
+                                                          name:
+                                                            "sort-ascending",
+                                                          mode: "out-in"
+                                                        }
+                                                      },
+                                                      [
+                                                        _c("i", {
+                                                          directives: [
+                                                            {
+                                                              name: "show",
+                                                              rawName: "v-show",
+                                                              value:
+                                                                column.sortingDirection ==
+                                                                1,
+                                                              expression:
+                                                                "column.sortingDirection == 1"
+                                                            }
+                                                          ],
+                                                          staticClass:
+                                                            "fa fa-arrow-up arrow",
+                                                          attrs: {
+                                                            "aria-hidden":
+                                                              "true"
+                                                          }
+                                                        })
+                                                      ]
+                                                    ),
+                                                    _vm._v(" "),
+                                                    _c(
+                                                      "transition",
+                                                      {
+                                                        attrs: {
+                                                          name:
+                                                            "sort-descending",
+                                                          mode: "out-in"
+                                                        }
+                                                      },
+                                                      [
+                                                        _c("i", {
+                                                          directives: [
+                                                            {
+                                                              name: "show",
+                                                              rawName: "v-show",
+                                                              value:
+                                                                column.sortingDirection ==
+                                                                -1,
+                                                              expression:
+                                                                "column.sortingDirection == -1"
+                                                            }
+                                                          ],
+                                                          staticClass:
+                                                            "fa fa-arrow-down arrow",
+                                                          attrs: {
+                                                            "aria-hidden":
+                                                              "true"
+                                                          }
+                                                        })
+                                                      ]
+                                                    )
+                                                  ],
+                                                  1
+                                                )
+                                              ]
+                                            : _vm._e()
+                                        ],
+                                        2
+                                      )
+                                    : _vm._e(),
+                                  _vm._v(" "),
+                                  _vm.state.groupable
+                                    ? [
+                                        !column.hidden
+                                          ? _c(
+                                              "div",
+                                              {
+                                                staticClass: "group",
+                                                on: {
+                                                  click: function($event) {
+                                                    column.grouping
+                                                      ? _vm.removeColumForGrouping(
+                                                          column
+                                                        )
+                                                      : _vm.addColumForGrouping(
+                                                          column
+                                                        )
+                                                  }
+                                                }
+                                              },
+                                              [
+                                                _c("i", {
+                                                  directives: [
+                                                    {
+                                                      name: "show",
+                                                      rawName: "v-show",
+                                                      value: !column.grouping,
+                                                      expression:
+                                                        "!column.grouping"
+                                                    }
+                                                  ],
+                                                  staticClass:
+                                                    "fa fa-object-group",
+                                                  attrs: {
+                                                    "aria-hidden": "true",
+                                                    title:
+                                                      "Group column '" +
+                                                      column.name +
+                                                      "'"
+                                                  }
+                                                }),
+                                                _vm._v(" "),
+                                                _c("i", {
+                                                  directives: [
+                                                    {
+                                                      name: "show",
+                                                      rawName: "v-show",
+                                                      value: column.grouping,
+                                                      expression:
+                                                        "column.grouping"
+                                                    }
+                                                  ],
+                                                  staticClass:
+                                                    "fa fa-object-ungroup",
+                                                  attrs: {
+                                                    "aria-hidden": "true",
+                                                    title:
+                                                      "Ungroup column '" +
+                                                      column.name +
+                                                      "'"
+                                                  }
+                                                })
+                                              ]
+                                            )
+                                          : _vm._e()
+                                      ]
+                                    : _vm._e(),
+                                  _vm._v(" "),
+                                  _vm.state.filtrable
+                                    ? [
+                                        !column.hidden
+                                          ? _c(
+                                              "div",
+                                              {
+                                                staticClass: "filter",
+                                                class:
+                                                  column.filtering &&
+                                                  column.filtering.enabled
+                                                    ? "filter-enabled"
+                                                    : "",
+                                                attrs: {
+                                                  title:
+                                                    "Filter '" +
+                                                    column.name +
+                                                    "'"
+                                                },
+                                                on: {
+                                                  click: function($event) {
+                                                    _vm.showFilterForm(column)
+                                                  }
+                                                }
+                                              },
+                                              [
+                                                _c("i", {
+                                                  staticClass: "fa fa-filter",
+                                                  attrs: {
+                                                    "aria-hidden": "true"
+                                                  }
+                                                })
+                                              ]
+                                            )
+                                          : _vm._e(),
+                                        _vm._v(" "),
+                                        column.showFilterForm
+                                          ? _c(
+                                              "div",
+                                              {
+                                                directives: [
+                                                  {
+                                                    name: "click-outside",
+                                                    rawName: "v-click-outside",
+                                                    value: function(a, b) {
+                                                      _vm.hideFilterForm(column)
+                                                    },
+                                                    expression:
+                                                      "function (a, b) { hideFilterForm(column) }"
+                                                  }
+                                                ],
+                                                staticClass: "filter-container"
+                                              },
+                                              [
+                                                _c(
+                                                  "div",
+                                                  {
+                                                    staticClass: "filter-window"
+                                                  },
+                                                  [
+                                                    _vm._v(
+                                                      "\n\t\t\t\t\t\t\t\t\t\t\tShow items with value that:\n\t\t\t\t\t\t\t\t\t\t\t"
+                                                    ),
+                                                    _c(
+                                                      "select",
+                                                      {
+                                                        directives: [
+                                                          {
+                                                            name: "model",
+                                                            rawName: "v-model",
+                                                            value:
+                                                              column.filtering
+                                                                .filterMode,
+                                                            expression:
+                                                              "column.filtering.filterMode"
+                                                          }
+                                                        ],
+                                                        staticClass:
+                                                          "filter-mods",
+                                                        on: {
+                                                          input: function(
+                                                            $event
+                                                          ) {
+                                                            _vm.selectFilter(
+                                                              column,
+                                                              $event.target
+                                                                .value
+                                                            )
+                                                          },
+                                                          change: function(
+                                                            $event
+                                                          ) {
+                                                            var $$selectedVal = Array.prototype.filter
+                                                              .call(
+                                                                $event.target
+                                                                  .options,
+                                                                function(o) {
+                                                                  return o.selected
+                                                                }
+                                                              )
+                                                              .map(function(o) {
+                                                                var val =
+                                                                  "_value" in o
+                                                                    ? o._value
+                                                                    : o.value
+                                                                return val
+                                                              })
+                                                            _vm.$set(
+                                                              column.filtering,
+                                                              "filterMode",
+                                                              $event.target
+                                                                .multiple
+                                                                ? $$selectedVal
+                                                                : $$selectedVal[0]
+                                                            )
+                                                          }
+                                                        }
+                                                      },
+                                                      _vm._l(
+                                                        _vm.filteringModes,
+                                                        function(
+                                                          filteringMode,
+                                                          filteringModeName
+                                                        ) {
+                                                          return filteringMode.type ==
+                                                            "all" ||
+                                                            filteringMode.type ==
+                                                              column.type
+                                                            ? _c(
+                                                                "option",
+                                                                {
+                                                                  domProps: {
+                                                                    value: filteringModeName
+                                                                  }
+                                                                },
+                                                                [
+                                                                  _vm._v(
+                                                                    "\n\t\t\t\t\t\t\t\t\t\t\t\t\t" +
+                                                                      _vm._s(
+                                                                        filteringMode.title
+                                                                      ) +
+                                                                      "\n\t\t\t\t\t\t\t\t\t\t\t\t"
+                                                                  )
+                                                                ]
+                                                              )
+                                                            : _vm._e()
+                                                        }
+                                                      )
+                                                    ),
+                                                    _vm._v(" "),
+                                                    _c("input", {
+                                                      directives: [
+                                                        {
+                                                          name: "model",
+                                                          rawName: "v-model",
+                                                          value:
+                                                            column.filtering
+                                                              .expected,
+                                                          expression:
+                                                            "column.filtering.expected"
+                                                        }
+                                                      ],
+                                                      staticClass:
+                                                        "expected-value-input",
+                                                      domProps: {
+                                                        value:
+                                                          column.filtering
+                                                            .expected
+                                                      },
+                                                      on: {
+                                                        input: [
+                                                          function($event) {
+                                                            if (
+                                                              $event.target
+                                                                .composing
+                                                            ) {
+                                                              return
+                                                            }
+                                                            _vm.$set(
+                                                              column.filtering,
+                                                              "expected",
+                                                              $event.target
+                                                                .value
+                                                            )
+                                                          },
+                                                          function($event) {
+                                                            _vm.selectValueForFilter(
+                                                              column,
+                                                              $event.target
+                                                                .value
+                                                            )
+                                                          }
+                                                        ]
+                                                      }
+                                                    }),
+                                                    _vm._v(" "),
+                                                    _c(
+                                                      "button",
+                                                      {
+                                                        staticClass:
+                                                          "clear-button",
+                                                        on: {
+                                                          click: function(
+                                                            $event
+                                                          ) {
+                                                            _vm.removeColumForFiltering(
+                                                              column
+                                                            )
+                                                          }
+                                                        }
+                                                      },
+                                                      [_vm._v("Clear")]
+                                                    )
+                                                  ]
+                                                )
+                                              ]
+                                            )
+                                          : _vm._e()
+                                      ]
+                                    : _vm._e(),
+                                  _vm._v(" "),
+                                  _vm.state.resizable
+                                    ? [
+                                        !column.hidden
+                                          ? _c(
+                                              "div",
+                                              {
+                                                staticClass: "mover-container"
+                                              },
+                                              [
+                                                _c("div", {
+                                                  staticClass: "mover",
+                                                  on: {
+                                                    mousedown: function(
+                                                      $event
+                                                    ) {
+                                                      _vm.beginResizeColumn(
+                                                        column,
+                                                        $event
+                                                      )
+                                                    }
+                                                  }
+                                                })
+                                              ]
+                                            )
+                                          : _vm._e()
+                                      ]
+                                    : _vm._e()
+                                ],
+                                2
+                              )
+                            ]
+                          )
+                        })
+                      ],
+                      2
+                    )
+                  : _vm._e()
+              ])
+            ]
+          )
+        ]
       ),
       _vm._v(" "),
-      _c("div", { staticClass: "table-container" }, [
+      _c("div", { staticClass: "table-container table-responsive" }, [
         _c(
           "table",
           { staticClass: "table", style: { width: _vm.getTableWidth() } },
@@ -5601,7 +6281,7 @@ exports = module.exports = __webpack_require__(8)(false);
 
 
 // module
-exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-enabled {\n            color: #ff9c4a;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n            text-transform: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              width: 200px;\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .filter-mods {\n                width: 100%;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input {\n                width: 100%;\n                background: white;\n                color: #3b3b3b;\n                border-width: 0px;\n                border-bottom: 1px solid #77777750;\n                padding-bottom: 2px;\n                margin-bottom: 2px;\n                margin-top: 2px;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input:active, .vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input:focus {\n                  outline: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button {\n                width: 100%;\n                height: 20px;\n                background: white;\n                color: #3b3b3b;\n                border-width: 0;\n                border-radius: 0 0 2px 2px;\n                box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n                -webkit-transition: box-shadow 0.2s ease-out;\n                -moz-transition: box-shadow 0.2s ease-out;\n                -o-transition: box-shadow 0.2s ease-out;\n                transition: box-shadow 0.2s ease-out;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:hover {\n                  color: steelblue;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:active, .vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:focus {\n                  outline: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:active {\n                  box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.02);\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #3349a7;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        border-width: 0;\n}\n.vue-table .table-container .table .body .th-triangle {\n        border-top: 1px solid #ccc;\n        border-left: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .th-header {\n        /*border-top: 1px solid #ccc;*/\n        border-bottom: 1px solid #ccc;\n        padding-left: 2px;\n}\n.vue-table .table-container .table .body .th-left {\n        border-left: 1px solid #ccc;\n        font-size: 16px;\n        text-align: right;\n}\n.vue-table .table-container .table .body .th-left .hide-group {\n          width: 15px;\n          height: 20px;\n}\n.vue-table .table-container .table .body .th-left .hide-group:hover {\n          color: sandybrown;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 1px 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
+exports.push([module.i, "\n.vue-table {\n  font-family: 'Open Sans', sans-serif;\n  font-size: 12px;\n}\n.vue-table div.vertical {\n    transform: rotate(90deg);\n    -webkit-transform: rotate(90deg);\n    /* Safari/Chrome */\n    -moz-transform: rotate(90deg);\n    /* Firefox */\n    -o-transform: rotate(90deg);\n    /* Opera */\n    -ms-transform: rotate(90deg);\n    /* IE 9 */\n}\n.vue-table div.vertical {\n    letter-spacing: 6px;\n    font-size: 14px;\n    font-weight: 600;\n    white-space: nowrap;\n    color: #c7c7c7;\n}\n.vue-table .fixed-header {\n    position: fixed;\n    top: 0;\n    z-index: 1000;\n}\n.vue-table .false-header {\n    width: 100%;\n    overflow: visible;\n}\n.vue-table .false-header .table-container {\n      min-height: 0px;\n      overflow: visible;\n}\n.vue-table .false-header .table-container .header {\n        display: flex;\n        flex-direction: row;\n        overflow: visible;\n}\n.vue-table .group-area {\n    background-color: #415090;\n    border-radius: 3px 3px 0 0;\n    border-color: #e6e6e6;\n    border-bottom-style: solid;\n    border-bottom-width: 1px;\n    color: rgba(255, 255, 255, 0.5);\n    line-height: 2;\n    margin: 0;\n    padding: .75em .2em .8333em 1em;\n    cursor: default;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .group-area .group-item {\n      display: flex;\n      flex-direction: row;\n      padding: 1px 5px;\n      color: white;\n      font-weight: 600;\n      margin-right: 10px;\n      background: #182768;\n      border-radius: 5px;\n      -ms-user-select: none;\n      -moz-user-select: none;\n      -khtml-user-select: none;\n      -webkit-user-select: none;\n      text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n      cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup {\n        color: rgba(200, 200, 200, 0.637);\n        margin: 4px 2px 0px 6px;\n        font-size: 14px;\n        cursor: pointer;\n}\n.vue-table .group-area .group-item .ungroup:hover {\n          color: white;\n}\n.vue-table .group-area .group-item .sort-icon {\n        width: 15px;\n        height: 15px;\n        margin-right: 5px;\n        padding: 4px 5px 0 2px;\n}\n.vue-table .paging {\n    padding-top: 3px;\n    width: 100%;\n    height: 40px;\n    color: #444;\n    padding-left: 20px;\n    background-color: #fafafa;\n    border-radius: 0 0 3px 3px;\n    border-color: #e6e6e6;\n    -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);\n    line-height: 2.3em;\n    border-width: 1px;\n    white-space: normal;\n    clear: both;\n    overflow: hidden;\n    border-style: solid;\n    display: flex;\n    flex-direction: row;\n}\n.vue-table .paging .paging-select {\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-left: 1px solid #86868691;\n      padding-left: 15px;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      font-size: 15px;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-select:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-select:focus {\n        outline: 0;\n        background: white;\n}\n.vue-table .paging .paging-select option:hover {\n        background: red;\n        color: white;\n}\n.vue-table .paging .paging-button {\n      width: 29px;\n      height: 29px;\n      border-width: 0px;\n      border-top: 1px solid #3348a700;\n      border-radius: 0px 0px 3px 3px;\n      background: rgba(255, 255, 255, 0);\n      -webkit-box-shadow: none;\n      box-shadow: none;\n      flex-grow: 0;\n}\n.vue-table .paging .paging-button.selected {\n        border-top: 1px solid #3349a7;\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:hover {\n        background: rgba(233, 233, 233, 0.555);\n}\n.vue-table .paging .paging-button:disabled, .vue-table .paging .paging-button[disabled] {\n        color: #c7c7c7;\n}\n.vue-table .paging .paging-button:focus {\n        outline: 0;\n}\n.vue-table .paging .paging-select-hint {\n      padding-top: 1px;\n      font-size: 14px;\n      font-weight: 400;\n      color: #666666;\n      flex-grow: 1;\n}\n.vue-table .paging .paging-info {\n      padding-top: 1px;\n      padding-right: 30px;\n      font-size: 12px;\n      font-weight: 400;\n      color: #9b9b9b;\n      flex-grow: 0;\n}\n.vue-table .table-container {\n    display: block;\n    overflow-x: auto;\n    white-space: nowrap;\n    background: rgba(236, 236, 236, 0.753);\n    min-height: 200px;\n}\n.vue-table .table-container .table {\n      table-layout: fixed;\n      font-family: 'Open Sans', sans-serif;\n      font-size: 12px;\n      margin-bottom: 0px;\n      border-right: 1px solid #77777750;\n      border-left: 1px solid #77777750;\n}\n.vue-table .table-container .table .header .column {\n        color: #fff;\n        background: #adaeb0;\n        font-weight: 700;\n        text-transform: uppercase;\n        overflow: visible;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-width: 0 0 1px 1px;\n        padding: .5em .6em .4em .6em;\n        text-shadow: 1px 1px rgba(0, 0, 0, 0.14);\n        cursor: pointer;\n}\n.vue-table .table-container .table .header .column .container {\n          display: flex;\n          flex-direction: row;\n          width: auto;\n          padding: 0px;\n}\n.vue-table .table-container .table .header .column .container .rol-up {\n            padding: 0 5px 0 0;\n            font-size: 15px;\n}\n.vue-table .table-container .table .header .column .container .rol-up:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .name {\n            flex-basis: 100%;\n}\n.vue-table .table-container .table .header .column .container .name .arrow {\n              color: #415090;\n              text-transform: lowercase;\n              margin: 0 0 0 3px;\n}\n.vue-table .table-container .table .header .column .container .filter {\n            font-size: 16px;\n}\n.vue-table .table-container .table .header .column .container .filter:hover {\n              color: #415090;\n}\n.vue-table .table-container .table .header .column .container .filter-enabled {\n            color: #ff9c4a;\n}\n.vue-table .table-container .table .header .column .container .filter-container {\n            position: relative;\n            color: black;\n            font-weight: 200;\n            text-shadow: none;\n            text-transform: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window {\n              width: 200px;\n              position: absolute;\n              padding: 10px;\n              background: white;\n              box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n              border-radius: 0 0 5px 5px;\n              top: 22px;\n              left: -30px;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .filter-mods {\n                width: 100%;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input {\n                width: 100%;\n                background: white;\n                color: #3b3b3b;\n                border-width: 0px;\n                border-bottom: 1px solid #77777750;\n                padding-bottom: 2px;\n                margin-bottom: 2px;\n                margin-top: 2px;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input:active, .vue-table .table-container .table .header .column .container .filter-container .filter-window .expected-value-input:focus {\n                  outline: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button {\n                width: 100%;\n                height: 20px;\n                background: white;\n                color: #3b3b3b;\n                border-width: 0;\n                border-radius: 0 0 2px 2px;\n                box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n                -webkit-transition: box-shadow 0.2s ease-out;\n                -moz-transition: box-shadow 0.2s ease-out;\n                -o-transition: box-shadow 0.2s ease-out;\n                transition: box-shadow 0.2s ease-out;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:hover {\n                  color: steelblue;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:active, .vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:focus {\n                  outline: none;\n}\n.vue-table .table-container .table .header .column .container .filter-container .filter-window .clear-button:active {\n                  box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.02);\n}\n.vue-table .table-container .table .header .column .container .group {\n            font-size: 16px;\n            margin: 0 5px 0 0;\n}\n.vue-table .table-container .table .header .column .container .group:hover {\n            color: #415090;\n}\n.vue-table .table-container .table .header .column .container .mover-container {\n            position: relative;\n}\n.vue-table .table-container .table .header .column .container .mover-container .mover {\n              position: absolute;\n              top: -5px;\n              left: 4px;\n              width: 8px;\n              height: calc(100% + 10px);\n              z-index: 900;\n              opacity: 1;\n              cursor: col-resize;\n}\n.vue-table .table-container .table .header .column .hint-container {\n          position: relative;\n          display: none;\n          justify-content: center;\n          width: 100%;\n}\n.vue-table .table-container .table .header .column .hint-container .hint {\n            display: inline-block;\n            position: absolute;\n            top: 2px;\n            margin: 0 auto;\n            padding: 6px 5px 6px 5px;\n            width: auto;\n            background: #3349a7;\n            border-radius: 3px;\n            box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);\n            text-transform: none;\n            font-weight: 400;\n}\n.vue-table .table-container .table .header .hint:before {\n        border-bottom-color: #3349a7;\n}\n.vue-table .table-container .table .header .hint:after {\n        text-transform: none;\n        background-color: #3349a7;\n}\n.vue-table .table-container .table .header .sort-descending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-descending-leave-active {\n        display: none;\n}\n.vue-table .table-container .table .header .sort-ascending-enter-active {\n        border: 2px solid #77777750;\n        border-radius: 30px;\n        -webkit-animation-name: cog;\n        -webkit-animation-duration: 0.15s;\n        -webkit-animation-iteration-count: infinite;\n        -webkit-animation-timing-function: linear;\n        -moz-animation-name: cog;\n        -moz-animation-duration: 0.15s;\n        -moz-animation-iteration-count: infinite;\n        -moz-animation-timing-function: linear;\n        -ms-animation-name: cog;\n        -ms-animation-duration: 0.15s;\n        -ms-animation-iteration-count: infinite;\n        -ms-animation-timing-function: linear;\n        animation-name: cog;\n        animation-duration: 0.15s;\n        animation-iteration-count: infinite;\n        animation-timing-function: linear;\n}\n.vue-table .table-container .table .header .sort-ascending-leave-active {\n        display: none;\n}\n@-ms-keyframes cog {\n.vue-table .table-container .table .header from {\n    -ms-transform: rotate(180deg);\n}\n.vue-table .table-container .table .header to {\n    -ms-transform: rotate(0deg);\n}\n}\n@-moz-keyframes cog {\nfrom {\n    -moz-transform: rotate(180deg);\n}\nto {\n    -moz-transform: rotate(0deg);\n}\n}\n@-webkit-keyframes cog {\nfrom {\n    -webkit-transform: rotate(180deg);\n}\nto {\n    -webkit-transform: rotate(0deg);\n}\n}\n@keyframes cog {\nfrom {\n    transform: rotate(180deg);\n}\nto {\n    transform: rotate(0deg);\n}\n}\n.vue-table .table-container .table .header .flip-list-move {\n        transition: transform 5s;\n}\n.vue-table .table-container .table .body td {\n        line-height: 1em;\n        font-size: 11px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 0 0 1px 1px;\n        background-color: #ffffff;\n}\n.vue-table .table-container .table .body th {\n        background-color: #f2f2f2;\n        border-width: 0;\n}\n.vue-table .table-container .table .body .th-triangle {\n        border-top: 1px solid #ccc;\n        border-left: 1px solid #ccc;\n}\n.vue-table .table-container .table .body .th-header {\n        /*border-top: 1px solid #ccc;*/\n        border-bottom: 1px solid #ccc;\n        padding-left: 2px;\n}\n.vue-table .table-container .table .body .th-left {\n        border-left: 1px solid #ccc;\n        font-size: 16px;\n        text-align: right;\n}\n.vue-table .table-container .table .body .th-left .hide-group {\n          width: 15px;\n          height: 20px;\n}\n.vue-table .table-container .table .body .th-left .hide-group:hover {\n          color: sandybrown;\n}\n.vue-table .table-container .table .body .lighting-row:hover td {\n        background-color: #ececec;\n}\n.vue-table .table-container .table .body .hidden-column {\n        vertical-align: top;\n}\n.vue-table .table-container .table .footer th {\n        line-height: 1em;\n        font-size: 12px;\n        padding: .4em .6em;\n        overflow: hidden;\n        vertical-align: middle;\n        text-overflow: ellipsis;\n        border-style: solid;\n        border-color: #ccc;\n        border-width: 1px 0 1px 1px;\n        background: #3349a7;\n        background-color: #f2f2f2;\n        font-weight: 700;\n}\n", ""]);
 
 // exports
 
@@ -5624,6 +6304,9 @@ exports.indexOfItemInArray = indexOfItemInArray;
 exports.removeItemInArray = removeItemInArray;
 exports.itemExistInArray = itemExistInArray;
 exports.getColumns = getColumns;
+exports.generateId = generateId;
+exports.getMinWidth = getMinWidth;
+exports.calculateWidth = calculateWidth;
 exports.getTypedValue = getTypedValue;
 exports.sort = sort;
 exports.filter = filter;
@@ -5674,48 +6357,89 @@ function getColumns(columns, sortable, filtrable, groupable, resizable, movable,
 	return columns.map(function (x) {
 		switch (typeof x === 'undefined' ? 'undefined' : _typeof(x)) {
 			case 'string':
+				var readableName = getReadableName(x);
+				var columnSortable = sortable || false,
+				    columnFiltrable = filtrable || false,
+				    columnGroupable = groupable || false,
+				    columnHidable = hidable || false;
+
 				return {
 					id: x,
-					name: getReadableName(x),
+					name: readableName,
 					type: defaultType,
-					sortable: sortable || false,
-					filtrable: filtrable || false,
-					groupable: groupable || false,
+					sortable: columnSortable,
+					filtrable: columnFiltrable,
+					groupable: columnGroupable,
+					hidable: columnHidable,
 					resizable: resizable || false,
 					movable: movable || false,
-					hidable: hidable || false,
-					width: undefined
+					width: calculateWidth(readableName, columnHidable, columnFiltrable, columnGroupable, columnSortable)
 				};
 			case 'object':
 				if (Array.isArray(x)) {
+					var _readableName = x[1] || getReadableName(x[0]);
+
+					var _columnSortable = sortable || false,
+					    _columnFiltrable = filtrable || false,
+					    _columnGroupable = groupable || false,
+					    _columnHidable = hidable || false;
+
 					return {
 						id: x[0],
-						name: x[1] || getReadableName(x[0]),
+						name: _readableName,
 						type: x[2] || defaultType,
-						sortable: sortable || false,
-						filtrable: filtrable || false,
-						groupable: groupable || false,
+						sortable: _columnSortable,
+						filtrable: _columnFiltrable,
+						groupable: _columnGroupable,
+						hidable: _columnHidable,
 						resizable: resizable || false,
 						movable: movable || false,
-						hidable: hidable || false,
-						width: undefined
+						width: calculateWidth(_readableName, _columnHidable, _columnFiltrable, _columnGroupable, _columnSortable)
 					};
 				} else {
+					var _readableName2 = x.name || getReadableName(x.id);
+
+					var _columnSortable2 = x.sortable || sortable || false,
+					    _columnFiltrable2 = x.filtrable || filtrable || false,
+					    _columnGroupable2 = x.groupable || groupable || false,
+					    _columnHidable2 = x.hidable || hidable || false;
+
 					return {
 						id: x.id,
-						name: x.name || getReadableName(x.id),
+						name: _readableName2,
 						type: x.type || defaultType,
-						sortable: x.sortable || sortable || false,
-						filtrable: x.filtrable || filtrable || false,
-						groupable: x.groupable || groupable || false,
+						sortable: _columnSortable2,
+						filtrable: _columnFiltrable2,
+						groupable: _columnGroupable2,
+						hidable: _columnHidable2,
 						resizable: x.resizable || resizable || false,
 						movable: x.movable || movable || false,
-						hidable: x.hidable || hidable || false,
-						width: x.width
+						width: x.width || calculateWidth(_readableName2, _columnHidable2, _columnFiltrable2, _columnGroupable2, _columnSortable2)
 					};
 				}
 		}
 	});
+}
+
+function generateId() {
+	var length = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 8;
+
+	var ts = (+new Date()).toString();
+	var parts = ts.split("").reverse();
+	var id = "";
+	for (var i = 0; i < length; i++) {
+		var index = _getRandomInt(0, parts.length - 1);
+		id += parts[index];
+	}
+	return id;
+}
+
+function getMinWidth(columnName) {
+	return columnName.length * 8 + 10;
+}
+
+function calculateWidth(columnName, hidable, filtrable, groupable, sortable) {
+	return getMinWidth(columnName) + (hidable ? 20 : 0) + (filtrable ? 20 : 0) + (groupable ? 30 : 0) + (sortable ? 30 : 0);
 }
 
 function getTypedValue(value, type) {
@@ -5787,16 +6511,15 @@ function group(data, state) {
 
 function page(data, state) {
 	if (state.paging) {
-		if (state.paging.size == 0) {
-			return;
-		}
 		state.paging.count = state.paging.size == 0 ? 1 : Math.ceil(data.items.length / state.paging.size) || 1;
 		if (state.paging.current > state.paging.count) {
 			state.paging.current = state.paging.count;
 		}
-		var from = state.paging.size * (state.paging.current - 1);
-		var to = state.paging.size * state.paging.current;
-		data.items = data.items.slice(from, to);
+		if (state.paging.size !== 0) {
+			var from = state.paging.size * (state.paging.current - 1);
+			var to = state.paging.size * state.paging.current;
+			data.items = data.items.slice(from, to);
+		}
 		data.paging = state.paging;
 	}
 }

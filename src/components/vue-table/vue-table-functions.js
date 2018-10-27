@@ -50,49 +50,86 @@ export function getColumns( columns,
 	return columns.map(x => {
 		switch (typeof(x)) {
 			case 'string':
+				let readableName = getReadableName(x);
+				let [columnSortable, columnFiltrable, columnGroupable, columnHidable] = 
+					[sortable || false, filtrable || false, groupable || false, hidable || false];
 				return {
 					id: x,
-					name: getReadableName(x),
+					name: readableName,
 					type: defaultType,
-					sortable: sortable || false,
-					filtrable: filtrable || false,
-					groupable: groupable || false,
+					sortable: columnSortable,
+					filtrable: columnFiltrable,
+					groupable: columnGroupable,
+					hidable: columnHidable,
 					resizable: resizable || false,
 					movable: movable || false,
-					hidable: hidable || false,
-					width: undefined
+					width: calculateWidth(readableName, columnHidable, columnFiltrable, columnGroupable, columnSortable)
 				}
 			case 'object':
 				if (Array.isArray(x)){
+					let readableName = x[1] || getReadableName(x[0]);
+					let [columnSortable, columnFiltrable, columnGroupable, columnHidable] = 
+						[sortable || false, filtrable || false, groupable || false, hidable || false];
 					return {
 						id: x[0],
-						name: x[1] || getReadableName(x[0]),
+						name: readableName,
 						type: x[2] || defaultType,
-						sortable: sortable || false,
-						filtrable: filtrable || false,
-						groupable: groupable || false,
+						sortable: columnSortable,
+						filtrable: columnFiltrable,
+						groupable: columnGroupable,
+						hidable: columnHidable,
 						resizable: resizable || false,
 						movable: movable || false,
-						hidable: hidable || false,
-						width: undefined
+						width: calculateWidth(readableName, columnHidable, columnFiltrable, columnGroupable, columnSortable)
 					}
 				}
 				else {
+					let readableName = x.name || getReadableName(x.id);
+					let [columnSortable, columnFiltrable, columnGroupable, columnHidable] = 
+						[
+							x.sortable ||  sortable || false, 
+							x.filtrable ||  filtrable || false, 
+							x.groupable || groupable || false, 
+							x.hidable || hidable || false
+						];
 					return {
 						id: x.id,
-						name: x.name || getReadableName(x.id),
+						name: readableName,
 						type: x.type || defaultType,
-						sortable: x.sortable ||  sortable || false,
-						filtrable: x.filtrable ||  filtrable || false,
-						groupable: x.groupable || groupable || false,
+						sortable: columnSortable,
+						filtrable: columnFiltrable,
+						groupable: columnGroupable,
+						hidable: columnHidable,
 						resizable: x.resizable || resizable || false,
 						movable: x.movable || movable || false,
-						hidable: x.hidable || hidable || false,
-						width: x.width
+						width: x.width || calculateWidth(readableName, columnHidable, columnFiltrable, columnGroupable, columnSortable)
 					}
 				}
 		}
 	})
+}
+
+export function generateId(length = 8) {
+	let ts = (+new Date).toString();
+	let parts = ts.split("").reverse();
+	let id = "";
+	for (let i = 0; i < length; i++) {
+	   let index = _getRandomInt(0, parts.length - 1);
+	   id += parts[index];	 
+	}
+	return id;
+}
+
+export function getMinWidth(columnName) {
+	return columnName.length * 8 + 10;
+}
+
+export function calculateWidth(columnName, hidable, filtrable, groupable, sortable) {
+	return getMinWidth(columnName) + 
+		(hidable ? 20 : 0) + 
+		(filtrable ? 20 : 0) + 
+		(groupable ? 30 : 0) + 
+		(sortable ? 30 : 0);
 }
 
 export function getTypedValue(value, type) {
@@ -172,16 +209,15 @@ export function group(data, state) {
 
 export function page(data, state) {
 	if (state.paging) {
-		if (state.paging.size == 0) {
-			return;
-		}
 		state.paging.count = state.paging.size == 0 ? 1 : Math.ceil(data.items.length / state.paging.size) || 1;
 		if (state.paging.current > state.paging.count) {
 			state.paging.current = state.paging.count;
 		}
-		let from = state.paging.size * (state.paging.current - 1);
-		let to = state.paging.size * state.paging.current;
-		data.items = data.items.slice(from, to);
+		if (state.paging.size !== 0) {
+			let from = state.paging.size * (state.paging.current - 1);
+			let to = state.paging.size * state.paging.current;
+			data.items = data.items.slice(from, to);
+		}
 		data.paging = state.paging;
 	}
 }

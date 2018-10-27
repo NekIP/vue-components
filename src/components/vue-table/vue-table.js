@@ -1,10 +1,20 @@
-import { getReadableName, removeItemInArray, indexOfItemInArray, getColumns, sort, group, filter, page } from './vue-table-functions'
-import { Column, columnFilters } from './vue-table-data';
+import { removeItemInArray, getColumns, getMinWidth, sort, group, filter, page } from './vue-table-functions'
+import { columnFilters } from './vue-table-data';
 import vClickOutside from 'v-click-outside'
 
 export default {
 	directives: {
-        clickOutside: vClickOutside.directive
+		clickOutside: vClickOutside.directive,
+		scroll: {
+			inserted: function (el, binding) {
+				let f = function (evt) {
+					if (binding.value(evt, el)) {
+						window.removeEventListener('scroll', f)
+					}
+				}
+				window.addEventListener('scroll', f)
+			}
+		}
     },
 	name: 'report-table',
 	props: {
@@ -100,6 +110,7 @@ export default {
 					current: 1
 				},
 
+				fixedHeader: false,
 				recalculate: 1
 			},
 			gates: [
@@ -112,7 +123,7 @@ export default {
 			groupAreaName: '*group-area*',
 			minWidthBias: 100,
 			hiddenColumnSize: 20,
-			maxCountOfPage: 5,
+			maxCountOfPage: 5
 		}
 	},
 	created () {
@@ -406,7 +417,11 @@ export default {
 		},
 
 		getMinWidth(column) {
-			return column.name.length * 6 + 10;
+			return getMinWidth(column.name);
+		},
+
+		getColumnSizeById(columnId) {
+			return document.getElementById(columnId + "Column")
 		},
 
 /* DRAG AND DROP */
@@ -468,9 +483,24 @@ export default {
 			return result;
 		},
 
-		forceUpdate() {
-			this.state.recalculate = -this.state.recalculate;
+		forceUpdate(hard = true) {
+			if (hard) {
+				this.state.recalculate = -this.state.recalculate;
+			}
 			this.$forceUpdate();
+		},
+
+		scroll(evt, el) {
+			if (window.scrollY > el.offsetTop) {
+				this.state.fixedHeader = true;
+			}
+			else {
+				this.state.fixedHeader = false;
+			}
+			if (this.state.fixedHeaderCache !== this.state.fixedHeader) {
+				this.forceUpdate(false);
+			}
+			this.state.fixedHeaderCache = this.state.fixedHeader;
 		}
 	}
 }
