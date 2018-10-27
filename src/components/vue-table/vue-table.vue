@@ -1,14 +1,18 @@
 <template>
-	<div class='vue-table'
+	<div class='vue-table col-sm-12'
 		@mousemove="resizeColumn($event)"
 		@mouseup="stopResizeColumn()">
 		<div class='group-area'
-				@dragenter="columnDragEnter(groupAreaName, $event)"
-				@dragend="columnDragEnd($event)">
+				@dragenter="state.enabledGroupingArea ? columnDragEnter(groupAreaName, $event) : 0"
+				@dragend="state.enabledGroupingArea ? columnDragEnd($event) : 0">
 			<div 	class="group-item"
 					v-for="groupingColumn in state.groupingColumns"
 					:key="groupingColumn.key"
-					@click="sortByMany(groupingColumn)">
+					@click="sortByMany(groupingColumn)"
+					draggable="true"
+					@dragstart="columnDragStart(groupingColumn, $event, enabledGroupingArea = false)"
+					@dragenter="columnDragEnter(groupingColumn, $event)"
+					@dragend="columnDragEnd($event, 'type: groupMove')">
 				<div class="sort-icon">
 					<span v-show="groupingColumn.sortingDirection">
 						<transition name="sort-ascending" mode="out-in">

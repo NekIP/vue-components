@@ -73,6 +73,7 @@ export default {
 				groupable: this.groupable,
 				groupingColumns: [],
 				hiddenGroups: {},
+				enabledGroupingArea: true,
 
 				hidable: this.hidable,
 				hidingColumns: [],
@@ -190,7 +191,7 @@ export default {
 
 /* GROUPING */
 		addColumForGrouping(column) {
-			if (this.state.groupable) {
+			if (this.state.groupable && !column.grouping) {
 				this.cleanSorting();
 				this.sortByMany(column);
 				column.grouping = true;
@@ -400,7 +401,8 @@ export default {
 		},
 
 /* DRAG AND DROP */
-		columnDragStart(column, event) {
+		columnDragStart(column, event, enabledGroupingArea = true) {
+			this.state.enabledGroupingArea = enabledGroupingArea;
 			if (!this.state.resizing.column) {
 				this.state.moving.dragable = column;
 			}
@@ -418,7 +420,7 @@ export default {
 			}
 		},
 
-		columnDragEnd(event) {
+		columnDragEnd(event, groupMove) {
 			if (!this.state.resizing.column) {
 				let dragableColumn = this.state.moving.dragable;
 				let dropableColumn = this.state.moving.dropable;
@@ -429,12 +431,21 @@ export default {
 					if (dropableColumn == this.groupAreaName) {
 						this.addColumForGrouping(dragableColumn);
 					}
+					else if (groupMove) {
+						let [i1, i2] = [this.state.groupingColumns.indexOf(dragableColumn), 
+							this.state.groupingColumns.indexOf(dropableColumn)];
+						console.log(dragableColumn);
+						console.log(dropableColumn);
+						[this.state.groupingColumns[i1], this.state.groupingColumns[i2]] = 
+							[this.state.groupingColumns[i2], this.state.groupingColumns[i1]];
+					}
 					else {
 						this.moveColumn(dragableColumn, dropableColumn);
 					}
 				}
 				this.state.moving.dragable = null;
 				this.state.moving.dropable = null;
+				this.state.enabledGroupingArea = true;
 				this.forceUpdate();
 			}
 			else {
