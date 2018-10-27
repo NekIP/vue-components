@@ -156,7 +156,7 @@
 											<input 
 												class="expected-value-input"
 												@input="selectValueForFilter(column, $event.target.value)"
-												v-model="column.filtering.epected"></input>
+												v-model="column.filtering.expected"></input>
 											<button class="clear-button" @click="removeColumForFiltering(column)">Clear</button>
 										</div>
 									</div>
@@ -199,10 +199,31 @@
 
 					<template v-if="hasGrouped" >
 						<template v-for="(groupingItem, i) in getGroupingItems()">
-							<tr v-if="groupingItem.group" :key="i">
+							<tr v-if="groupingItem.group && !groupingItem.hidden" :key="i">
 								<th v-for="(trash, j) in new Array(groupingItem.level)" 
 									:key="j" 
 									class="th-left">
+									<div class="rol-up" 
+										v-if="j == groupingItem.level - 1"
+										@click="
+											groupingItem.hiding 
+												? showGroup(groupingItem.joinGroupedValues) 
+												: hideGroup(groupingItem.joinGroupedValues)">
+											<transition name="sort-ascending" mode="out-in">
+												<i  class="fa fa-caret-left" 
+													role="button"
+													aria-hidden="true"
+													title="Hide group"
+													v-show="!groupingItem.hiding"></i>
+											</transition>
+											<transition name="sort-descending" mode="out-in">
+												<i  class="fa fa-caret-right" 
+													role="button"
+													aria-hidden="true"
+													title="Show group"
+													v-show="groupingItem.hiding"></i>
+											</transition>
+									</div>
 								</th>
 
 								<th :colspan="state.groupingColumns.length + state.columns.length - groupingItem.level"
@@ -214,7 +235,7 @@
 									</slot>
 								</th>
 							</tr>
-							<template v-if="!groupingItem.group">
+							<template v-if="!groupingItem.group && !groupingItem.hidden">
 								<tr :key="i" class="lighting-row">
 									<th v-for="(trash, j) in new Array(groupingItem.level)" 
 										:key="j" 

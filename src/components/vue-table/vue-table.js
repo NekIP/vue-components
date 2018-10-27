@@ -139,7 +139,7 @@ export default {
 		data() {
 			let recalulate = this.state.recalculate;
 			let result = {
-				items: this.items,
+				items: this.items.map(x => x),
 				paging: null
 			}
 			for (let i = 0; i < this.gates.length; i++) {
@@ -194,6 +194,7 @@ export default {
 				this.cleanSorting();
 				this.sortByMany(column);
 				column.grouping = true;
+				this.state.hiddenGroups = {};
 				this.state.groupingColumns.push(column);
 			}
 		},
@@ -201,24 +202,39 @@ export default {
 		getGroupingItems() {
 			let result = [];
 			let current = new Array(this.state.groupingColumns.length);
+			let levelHidden = Number.MAX_VALUE;
 			for (let i = 0; i < this.data.items.length; i++) {
 				let item = this.data.items[i];
 				let groupingValues = item.$_grouping_values;
 				let mismatchOnPrevStep = false;
+				let joinGroupedValues = "";
 				for (let j = 0; j < groupingValues.length; j++) {
+					joinGroupedValues += groupingValues[j];
 					if (current[j] !== groupingValues[j] || mismatchOnPrevStep) {
+						if (levelHidden >= j + 1) {
+							if (this.hasHiddenGroup(joinGroupedValues)) {
+								levelHidden = j + 1;
+							}
+							else {
+								levelHidden = Number.MAX_VALUE;
+							}
+						}
 						mismatchOnPrevStep = true;
 						current[j] = groupingValues[j];
 						result.push({
 							level: j + 1,
 							group: groupingValues[j],
-							column: this.state.groupingColumns[j]
+							column: this.state.groupingColumns[j],
+							hidden: j + 1 > levelHidden,
+							hiding: j + 1 == levelHidden,
+							joinGroupedValues: joinGroupedValues
 						});
 					}
 				}
 				result.push({
 					level: groupingValues.length,
-					item: item
+					item: item,
+					hidden: groupingValues.length >= levelHidden
 				});
 			}
 			return result;
@@ -226,17 +242,13 @@ export default {
 
 		removeColumForGrouping(column) {
 			column.grouping = false;
+			this.state.hiddenGroups = {};
 			removeItemInArray(this.state.groupingColumns, column, x => x);
+			this.cleanSorting();
 		},
 
-		groupIsHidden(groupedValues) {
-			for (let i = 0; groupedValues; i++) {
-				let groupedValue = groupedValues[i];
-				if (this.state.hiddenGroups[groupedValue]) {
-					return true;
-				}
-			}
-			return false;
+		hasHiddenGroup(joinGroupedValues) {
+			return this.state.hiddenGroups[joinGroupedValues];
 		},
 
 		hideGroup(joinGroupedValues) {
@@ -262,6 +274,7 @@ export default {
 		removeColumForFiltering(column) {
 			if (column.filtering) {
 				column.filtering.enabled = false;
+				column.filtering.expected = '';
 				removeItemInArray(this.state.filteringColumns, column, x => x);
 				this.forceUpdate();
 			}

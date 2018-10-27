@@ -450,6 +450,11 @@ $rotate-angle: 180deg;
 					border-left: 1px solid #ccc;
 					font-size: 16px;
 					text-align: right;
+
+					i {
+						width: 20px;
+						height: 20px;
+					}
 				}
 
 				.lighting-row:hover {
@@ -473,7 +478,7 @@ $rotate-angle: 180deg;
 					text-overflow: ellipsis;
 					border-style: solid;
 					border-color: #ccc;
-					border-width: 0 0 1px 1px;
+					border-width: 1px 0 1px 1px;
 					background: #3349a7;
 					background-color: #f2f2f2;
 					font-weight: 700;
