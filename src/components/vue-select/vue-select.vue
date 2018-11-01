@@ -186,9 +186,7 @@ export default {
                 });
             });
 		},
-		selectOrUnselectAllItemsInGroup(groupKey) {
-		
-			
+		selectOrUnselectAllItemsInGroup(groupKey) {	
 			this.optionGroups.forEach(optionGroup => {
 				if (optionGroup.key == groupKey) {
 					var isAllOptionsSelected = this.groupToIsAllOptionsSelectedMap[groupKey] 
@@ -260,6 +258,7 @@ export default {
 
 .select-box {
     position: relative;
+    z-index: 1;
 
 	&:hover {
 		select {
@@ -278,8 +277,9 @@ export default {
 .checkboxes-container {
     position: relative;
     width: 100%;
-    z-index: 100;
+    z-index: 1;
 
+    background-color: #fff;
     .checkboxes {
         background-color: #ffffff;
         border: 1px #dadada solid;
@@ -291,7 +291,7 @@ export default {
         left: 0;
         width: 100%;
         overflow-y: scroll;
-
+        z-index: 1;
 		.options-group {
 			padding-top: 1em;
 			padding-bottom: 1em;	

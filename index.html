@@ -37,6 +37,7 @@
 	</head>
 	<body>
 		<div id='app'>
+	
 			<vue-select 
 				default-title="Merchants" 
 				multiple-selected-title-chunk="Accounts"
@@ -47,7 +48,19 @@
 					{{ (selectedIds.length == 1) ? selectedIds[0] : `count: ${selectedIds.length}`}}
 				</span>
 			</vue-select>
+	
+			<vue-datepicker 
+				title="Select date range" 
+				:range-keys="['TODAY', 'LAST_30_DAYS', 'LAST_WEEK', 'CUSTOM_DATE_RANGE']" 
+				:allow-custom-date-range="true">
+				<span slot="triggerContainer"  slot-scope="{ selectedRange }"> 
+					<div class="btn btn-default">
+						{{ selectedRange.toString() }}
+					</div>
+				</span>
+			</vue-datepicker>
 
+	
 			<vue-table
 				:items="data"
 				:columns="columns"

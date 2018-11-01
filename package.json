@@ -7,9 +7,10 @@
     "watch": "webpack --watch"
   },
   "dependencies": {
-    "vue": "*",
     "fuse.js": "^3.2.1",
-    "v-click-outside": "^2.0.1"
+    "moment": "^2.22.2",
+    "v-click-outside": "^2.0.1",
+    "vue": "*"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
