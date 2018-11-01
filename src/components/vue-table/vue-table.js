@@ -1,7 +1,21 @@
-import { getReadableName, removeItemInArray, indexOfItemInArray, getColumns, sort, group, filter, page } from './vue-table-functions'
-import { Column, columnFilters } from './vue-table-data';
+import { removeItemInArray, getColumns, getMinWidth, calculateWidth, sort, group, filter, page } from './vue-table-functions'
+import { columnFilters } from './vue-table-data';
+import vClickOutside from 'v-click-outside'
 
 export default {
+	directives: {
+		clickOutside: vClickOutside.directive,
+		scroll: {
+			inserted: function (el, binding) {
+				let f = function (evt) {
+					if (binding.value(evt, el)) {
+						window.removeEventListener('scroll', f)
+					}
+				}
+				window.addEventListener('scroll', f)
+			}
+		}
+    },
 	name: 'report-table',
 	props: {
 		items: {
@@ -49,7 +63,9 @@ export default {
 		},
 		pageSizes: {
 			type: Array,
-			default: [25, 50, 100, 0],
+			default: function () {
+				return [25, 50, 100, 0];
+			},
 			required: false
 		}
 	},
@@ -66,6 +82,8 @@ export default {
 
 				groupable: this.groupable,
 				groupingColumns: [],
+				hiddenGroups: {},
+				enabledGroupingArea: true,
 
 				hidable: this.hidable,
 				hidingColumns: [],
@@ -92,6 +110,7 @@ export default {
 					current: 1
 				},
 
+				fixedHeader: false,
 				recalculate: 1
 			},
 			gates: [
@@ -100,101 +119,14 @@ export default {
 				group,
 				page
 			],
-			sorting: {
-				column: null,
-				ascending: false
-			},
-			filteringColumn: {
-				id: '',
-				mode: 'eq'
-			},
-			filteringModes: {
-				'Is equal to': {
-					type: 'all', 
-					handler: (curr, exp) => curr === exp 
-				},
-				"Is not equal to": { 
-					type: 'all', 
-					handler: (curr, exp) => curr === exp 
-				},
-				'Is null': { 
-					type: 'all', 
-					handler: (curr, exp) => curr === null, 
-					single: true 
-				},
-				'Is not null': { 
-					type: 'all', 
-					handler: (curr, exp) => curr !== null, 
-					single: true 
-				},
-				'Is greater than or equal to': { 
-					type: 'number', 
-					handler: (curr, exp) => +curr >= +exp 
-				},
-				'Is greater than': { 
-					type: 'number', 
-					handler: (curr, exp) => +curr > +exp 
-				},
-				'Is less than or equal to': { 
-					type: 'number',
-					handler: (curr, exp) => +curr <= +exp 
-				},
-				'Is less than': { 
-					type: 'number', 
-					handler: (curr, exp) => +curr < +exp 
-				},
-				'Starts with': { 
-					type: 'string', 
-					handler: (curr, exp) => curr.startsWith(exp) 
-				},
-				'Ends with': { 
-					type: 'string', 
-					handler: (curr, exp) => curr.endsWith(exp) 
-				},
-				'Contains': { 
-					type: 'string', 
-					handler: (curr, exp) => curr.includes(exp) 
-				},
-				'Does not contain': { 
-					type: 'string', 
-					handler: (curr, exp) => !curr.includes(exp) 
-				},
-				'Is empty': { 
-					type: 'string', 
-					handler: (curr, exp) => curr === "", 
-					single: true 
-				},
-				'Is not empty': {
-					type: 'string', 
-					handler: (curr, exp) => curr !== "", 
-					single: true 
-				},
-			},
-			groupingColumns: [],
-			page: {
-				size: this.pageSizes[0],
-				number: 1
-			},
-			movableColumn: {
-				dragable: null,
-				dropable: null
-			},
-			columnsInfo: null,
+			filteringModes: columnFilters,
 			groupAreaName: '*group-area*',
-			groupDelimeterChar: ';',
-			resizable: {
-				column: null,
-				mousePositionX: null
-			},
 			minWidthBias: 100,
-			hiddenColumnSize: 20,
-			maxCountOfPage: 5,
-			hints: {}	// show hint
-			/*columnsCash: null*/
+			hiddenColumnSize: screen.width < 1025 ? 40 : 20,
+			maxCountOfPage: 5
 		}
 	},
 	created () {
-		this.columnsInfo = this.getColumnsInfo();
 		this.state.columns = getColumns(
 			this.columns, 
 			this.sortable,
@@ -203,6 +135,17 @@ export default {
 			this.resizable,
 			this.movable,
 			this.hidable);
+		let self = this;
+		window.onresize = function (event) {
+			for (let i = 0; i < self.state.columns.length; i++) {
+				let column = self.state.columns[i];
+				column.width = calculateWidth(column.name, 
+					column.hidable, 
+					column.filtrable, 
+					column.groupable, 
+					column.sortable);
+			}
+		}
 	},
 	watch: {
 		'state.paging.size': function(size) {
@@ -213,43 +156,13 @@ export default {
 		}
 	},
 	computed: {
-		pageCount() {
-			if (this.page.size == 0) {
-				return 1;
-			}
-			return Math.ceil(this.items.length / this.page.size);
-		},
-		groupedData() {
-			let items = this.items;
-			let columns = this.groupingColumns;
-			let result = {};
-			for (let i = 0; i < items.length; i++) {
-				let item = items[i];
-				let key = "";
-				for (let j = 0; j < columns.length; j++) {
-					let column = columns[j];
-					let field = item[column.id];
-					if (j != columns.length - 1) {
-						key += '' + field + this.groupDelimeterChar;
-					}
-					else {
-						key += '' + field;
-					}
-				}
-				if (!result[key]) {
-					result[key] = [];
-				}
-				result[key].push(item);
-			}
-			return result;
-		},
 		hasGrouped() {
 			return this.state.groupingColumns && this.state.groupingColumns.length > 0;
 		},
 		data() {
 			let recalulate = this.state.recalculate;
 			let result = {
-				items: this.items,
+				items: this.items.map(x => x),
 				paging: null
 			}
 			for (let i = 0; i < this.gates.length; i++) {
@@ -260,22 +173,27 @@ export default {
 		}
 	},
 	methods: {
+/* SORTING */
 		sortByMany(column) {
-			if (!column.sortingDirection) {
-				column.sortingDirection = 1;
-				this.state.sortingColumns.push(column);
-			}
-			else {
-				column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
-				this.forceUpdate();
+			if (this.state.sortable || this.state.groupable) {
+				if (!column.sortingDirection) {
+					column.sortingDirection = 1;
+					this.state.sortingColumns.push(column);
+				}
+				else {
+					column.sortingDirection = column.sortingDirection === -1 ? 1 : -1;
+					this.forceUpdate();
+				}
 			}
 		},
 
 		sortByOne(column) {
-			if (!column.sortingDirection) {
-				this.cleanSorting();
+			if (this.state.sortable || this.state.groupable) {
+				if (!column.sortingDirection) {
+					this.cleanSorting();
+				}
+				this.sortByMany(column);
 			}
-			this.sortByMany(column);
 		},
 
 		cleanSorting() {
@@ -293,36 +211,154 @@ export default {
 			removeItemInArray(this.state.sortingColumns, column, x => x);
 		},
 
+/* GROUPING */
 		addColumForGrouping(column) {
-			this.cleanSorting();
-			this.sortByMany(column);
-			column.grouping = true;
-			this.state.groupingColumns.push(column);
+			if (this.state.groupable && !column.grouping) {
+				this.cleanSorting();
+				this.sortByMany(column);
+				column.grouping = true;
+				this.state.hiddenGroups = {};
+				this.state.groupingColumns.push(column);
+			}
+		},
+
+		getGroupingItems() {
+			let result = [];
+			let current = new Array(this.state.groupingColumns.length);
+			let levelHidden = Number.MAX_VALUE;
+			for (let i = 0; i < this.data.items.length; i++) {
+				let item = this.data.items[i];
+				let groupingValues = item.$_grouping_values;
+				let mismatchOnPrevStep = false;
+				let joinGroupedValues = "";
+				for (let j = 0; j < groupingValues.length; j++) {
+					joinGroupedValues += groupingValues[j];
+					if (current[j] !== groupingValues[j] || mismatchOnPrevStep) {
+						if (levelHidden >= j + 1) {
+							if (this.hasHiddenGroup(joinGroupedValues)) {
+								levelHidden = j + 1;
+							}
+							else {
+								levelHidden = Number.MAX_VALUE;
+							}
+						}
+						mismatchOnPrevStep = true;
+						current[j] = groupingValues[j];
+						result.push({
+							level: j + 1,
+							group: groupingValues[j],
+							column: this.state.groupingColumns[j],
+							hidden: j + 1 > levelHidden,
+							hiding: j + 1 == levelHidden,
+							joinGroupedValues: joinGroupedValues
+						});
+					}
+				}
+				result.push({
+					level: groupingValues.length,
+					item: item,
+					hidden: groupingValues.length >= levelHidden
+				});
+			}
+			return result;
 		},
 
 		removeColumForGrouping(column) {
 			column.grouping = false;
+			this.state.hiddenGroups = {};
 			removeItemInArray(this.state.groupingColumns, column, x => x);
+			this.cleanSorting();
 		},
 
-		addColumForFiltering(column, filter) {
-			column.filtering = filter;
-			this.state.filtering.push(column);
+		hasHiddenGroup(joinGroupedValues) {
+			return this.state.hiddenGroups[joinGroupedValues];
+		},
+
+		hideGroup(joinGroupedValues) {
+			this.state.hiddenGroups[joinGroupedValues] = true;
+			this.forceUpdate();
+		},
+
+		showGroup(joinGroupedValues) {
+			this.state.hiddenGroups[joinGroupedValues] = false;
+			this.forceUpdate();
+		},
+
+		changeGroupingOrder() {
+			let groupingColumn = this.state.groupingColumns.map(x => x);
+			for (let i = this.state.groupingColumns.length - 1; i >= 0; i--) {
+				this.removeColumForGrouping(this.state.groupingColumns[i]);
+			}
+			for (let i in groupingColumn) {
+				this.addColumForGrouping(groupingColumn[i]);
+			}
+		},
+
+/* FILTERING */
+		addColumForFiltering(column) {
+			if (column.filtering && !column.filtering.enabled) {
+				column.filtering.enabled = true;
+				this.state.filteringColumns.push(column);
+			}
+			this.forceUpdate();
 		},
 
 		removeColumForFiltering(column) {
-			column.filtering = undefined;
-			removeItemInArray(this.state.filtering, column);
+			if (column.filtering) {
+				column.filtering.enabled = false;
+				column.filtering.expected = '';
+				removeItemInArray(this.state.filteringColumns, column, x => x);
+				this.forceUpdate();
+			}
 		},
 
+		selectFilter(column, mode) {
+			column.filtering.filter = this.filteringModes[mode];
+			column.filtering.filterMode = mode;
+			if (column.filtering.filter.single || column.filtering.expected) {
+				this.addColumForFiltering(column);
+			}
+		},
+
+		selectValueForFilter(column, value) {
+			if (column.filtering) {
+				column.filtering.expected = value;
+				if (value) {
+					this.addColumForFiltering(column);
+				}
+				else {
+					this.removeColumForFiltering(column);
+				}
+			}
+		},
+
+		showFilterForm(column) {
+			if (!column.filtering) {
+				column.filtering = {
+					filter: this.filteringModes.eq,
+					expected: '',
+					enabled: false,
+					filterMode: 'eq'
+				};
+			}
+			column.showFilterForm = true;
+			this.forceUpdate();
+		},
+
+		hideFilterForm(column) {
+			column.showFilterForm = false;
+			this.forceUpdate();
+		},
+
+/* PAGING */
 		goToPage(i) {
-			if (i > 0 && i <= this.state.paging.count) {
-				this.state.paging.current = i;
+			if (i > 0 && i <= this.data.paging.count) {
+				this.data.paging.current = i;
 			}
 		},
 
 		canShowPageNumber(i) {
-			let num = Math.floor((this.state.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
+			let num = Math.floor((this.data.paging.current - 1) / this.maxCountOfPage) * this.maxCountOfPage;
 			return i >= num && i < num + this.maxCountOfPage;
 		},
 
@@ -330,139 +366,81 @@ export default {
 			return size == 0 ? 1 : Math.ceil(this.items.length / size)
 		},
 
-		getGroupingItems() {
-			let result = [];
-			let current = new Array(this.state.groupingColumns.length);
-			for (let i = 0; i < this.data.items.length; i++) {
-				let item = this.data.items[i];
-				let groupingValues = item.$_grouping_values;
-				let mismatchOnPrevStep = false; 
-				for (let j = 0; j < groupingValues.length; j++) {
-					if (current[j] !== groupingValues[j] || mismatchOnPrevStep) {
-						mismatchOnPrevStep = true;
-						current[j] = groupingValues[j];
-						result.push({
-							level: j + 1,
-							group: groupingValues[j],
-							column: this.state.groupingColumns[j]
-						});
-					}
-				}
-				result.push({
-					level: groupingValues.length,
-					item: item
-				});
+/* RESIZING */
+		beginResizeColumn(column, event) {
+			let columnElement = event.target.parentNode.parentNode.parentNode;
+			this.state.resizing.column = column;
+			if (!this.state.resizing.column.width) {
+				this.state.resizing.column.width = this.getMinWidth(column) + this.minWidthBias;
 			}
-			console.log(result);
-			return result;
+			this.state.resizing.mousePosition.x = event.clientX;
 		},
 
+		resizeColumn(event) {
+			if (this.state.resizing.column) {
+				let currentPosMouseX = event.clientX;
+				let currentWidth = this.state.resizing.column.width;
+				let deff = currentPosMouseX - this.state.resizing.mousePosition.x;
+				let minWidth = this.getMinWidth(this.state.resizing.column) + this.minWidthBias;
+				if (deff > 0 || currentWidth + deff > minWidth) {
+					this.state.resizing.column.width += currentPosMouseX - this.state.resizing.mousePosition.x;
+					this.state.resizing.mousePosition.x = currentPosMouseX;
+				}
+			}
+		},
 
+		stopResizeColumn() {
+			this.state.resizing.column = null;
+			this.state.resizing.mousePosition.x = null;
+		},
 
-		getColumnsInfo() {
-			const defaultType = 'string';
+/* MOVING */
+		move(from, to, array) {
+			let indexOfDragable = array.indexOf(from);
+			let indexOfDropable = array.indexOf(to);
+			if (indexOfDropable > -1) {
+				array.splice(indexOfDragable, 1);
+				array.splice(indexOfDropable, 0, from);
+			}
+		},
+
+/* HIDDING */
+		hideColumn(column, event) {
+			column.hidden = true;
+			this.forceUpdate();
+		},
+
+		showColumn(column, event) {
+			column.hidden = false;
+			this.forceUpdate();
+		},
+
+/* SIZES */
+		getTableWidth() {
 			let self = this;
-			return this.columns.map(x => {
-				switch (typeof(x)) {
-					case 'string':
-						return {
-							id: x,
-							name: getReadableName(x),
-							type: defaultType,
-							sortable: self.sortable || false,
-							filtrable: self.filtrable || false,
-							groupable: self.groupable || false,
-							width: undefined
-						}
-					case 'object':
-						if (Array.isArray(x)){
-							return {
-								id: x[0],
-								name: x[1] || getReadableName(x[0]),
-								type: x[2] || defaultType,
-								sortable: self.sortable || false,
-								filtrable: self.filtrable || false,
-								groupable: self.groupable || false,
-								width: undefined
-							}
-						}
-						else {
-							return {
-								id: x.id,
-								name: x.name || getReadableName(x.id),
-								type: x.type || defaultType,
-								sortable: x.sortable ||  self.sortable || false,
-								filtrable: x.filtrable ||  self.filtrable || false,
-								groupable: x.groupable || self.groupable || false,
-								width: x.width
-							}
-						}
-				}
-			})
-		},
-
-		getItemsOnCurrentPage() {
-			if (this.page.number > this.pageCount) {
-				this.page.number = 1;
-			}
-			if (+this.page.size == 0) {
-				return this.items;
-			}
-			let from = this.page.size * (this.page.number - 1);
-			let to = this.page.size * this.page.number;
-			return this.items.slice(from, to);
-		},
-
-		getGroupedItemsOnCurrentPage() {
-			if (this.page.number > this.pageCount) {
-				this.page.number = 1;
-			}
-			if (+this.page.size == 0) {
-				return this.groupedData;
-			}
-			let result = {};
-			let num = 0;
-			let from = this.page.size * (this.page.number - 1);
-			let to = this.page.size * this.page.number;
-			for (let key in this.groupedData) {
-				for (let i in this.groupedData[key]) {
-					if (from <= num && num < to) {
-						if (!result[key]) {
-							result[key] = []
-						}
-						result[key].push(this.groupedData[key][i]);
-					}
-					num++;
-				}
-			}
+			let result = this.state.columns.reduce((a, b) => 
+				a + (
+					!b.hidden 
+						? b.width || b.name.length * 18 + 50
+						: self.hiddenColumnSize), 
+				0);
 			return result;
 		},
 
-		nextPage() {
-			if (this.page.number < this.pageCount) {
-				this.page.number++;
-			}
+		getMinWidth(column) {
+			return getMinWidth(column.name);
 		},
 
-		prevPage() {
-			if (this.page.number > 1) {
-				this.page.number--;
-			}
+		getColumnSizeById(columnId) {
+			return document.getElementById(columnId + "Column")
 		},
 
-		lastPage() {
-			this.page.number = this.pageCount;
-		},
-
-		firstPage() {
-			this.page.number = 1;
-		},
-
-
-
-		columnDragStart(column, event) {
-			if (!this.resizable.column) {
-				this.movableColumn.dragable = column;
+/* DRAG AND DROP */
+		columnDragStart(column, event, enabledGroupingArea = true) {
+			event.dataTransfer.setData('text/plain', 'anything');
+			this.state.enabledGroupingArea = enabledGroupingArea;
+			if (!this.state.resizing.column) {
+				this.state.moving.dragable = column;
 			}
 			else {
 				event.preventDefault();
@@ -470,74 +448,44 @@ export default {
 		},
 
 		columnDragEnter(column, event) {
-			if (!this.resizable.column) {
-				this.movableColumn.dropable = column;
+			if (!this.state.resizing.column) {
+				this.state.moving.dropable = column;
 			}
 			else {
 				event.preventDefault();
 			}
 		},
 
-		columnDragEnd(event) {
-			if (!this.resizable.column) {
-				let dragableColumn = this.movableColumn.dragable;
-				let dropableColumn = this.movableColumn.dropable;
+		columnDragEnd(event, groupMove) {
+			if (!this.state.resizing.column) {
+				let dragableColumn = this.state.moving.dragable;
+				let dropableColumn = this.state.moving.dropable;
 				if (!dragableColumn || !dropableColumn) {
 					return;
 				}
 				if (dragableColumn != dropableColumn) {
 					if (dropableColumn == this.groupAreaName) {
-						this.group(dragableColumn);
+						this.addColumForGrouping(dragableColumn);
+					}
+					else if (groupMove) {
+						this.move(dragableColumn, dropableColumn, this.state.groupingColumns);
+						this.changeGroupingOrder();
 					}
 					else {
-						this.moveColumn(dragableColumn, dropableColumn);
+						this.move(dragableColumn, dropableColumn, this.state.columns);
 					}
 				}
-				this.movableColumn.dragable = null;
-				this.movableColumn.dropable = null;
-				this.$forceUpdate();
+				this.state.moving.dragable = null;
+				this.state.moving.dropable = null;
+				this.state.enabledGroupingArea = true;
+				this.forceUpdate();
 			}
 			else {
 				event.preventDefault();
 			}
 		},
 
-		group(column) {
-			if (this.groupingColumns.indexOf(column) == -1) {
-				this.groupingColumns.push(column);
-				this.sorting.column = null;
-				this.sorting.ascending = false;
-			}
-		},
-
-		ungroup(column) {
-			let i = this.groupingColumns.indexOf(column);
-			this.groupingColumns.splice(i, 1);
-			this.sorting.column = null;
-			this.sorting.ascending = false;
-		},
-
-		moveColumn(from, to) {
-			let indexOfDragable = this.columnsInfo.indexOf(from);
-			let indexOfDropable = this.columnsInfo.indexOf(to);
-			if (indexOfDropable > -1) {
-				this.columnsInfo.splice(indexOfDragable, 1);
-				this.columnsInfo.splice(indexOfDropable, 0, from);
-			}
-		},
-
-		getTypedValue(value, type) {
-			switch (type) {
-				case 'date':
-					/* TODO: use moment.js */
-					return Date.parse(value);
-				case 'string':
-					return value;
-				case 'number':
-					return +value;
-			}
-		},
-
+/* OTHER */
 		getCells(items, key) {
 			let result = [];
 			for (let i in items) {
@@ -547,103 +495,24 @@ export default {
 			return result;
 		},
 
-		getMinWidth(column) {
-			return column.name.length * 6 + 10;
-		},
-
-		showHint(column) {
-			this.hints[column.id] = true;
-			this.$forceUpdate();
-		},
-
-		hideHint(column) {
-			this.hints[column.id] = false;
-			this.$forceUpdate();
-		},
-
-		beginResizeColumn(column, event) {
-			let columnElement = event.target.parentNode.parentNode.parentNode;
-			this.resizable.column = column;
-			this.resizable.column.width = columnElement.offsetWidth;
-			this.resizable.mousePositionX = event.clientX;
-		},
-
-		resizeColumn(event) {
-			if (this.resizable.column) {
-				let currentPosMouseX = event.clientX;
-				let currentWidth = this.resizable.column.width;
-				let deff = currentPosMouseX - this.resizable.mousePositionX;
-				let minWidth = this.getMinWidth(this.resizable.column) + this.minWidthBias;
-				if (deff > 0 || currentWidth + deff > minWidth) {
-					this.resizable.column.width += currentPosMouseX - this.resizable.mousePositionX;
-					this.resizable.mousePositionX = currentPosMouseX;
-				}
+		forceUpdate(hard = true) {
+			if (hard) {
+				this.state.recalculate = -this.state.recalculate;
 			}
-		},
-
-		stopResizeColumn() {
-			this.resizable.column = null;
-			this.resizable.mousePositionX = null;
-		},
-
-		getTableWidth() {
-			let self = this;
-			let result = this.columnsInfo.reduce((a, b) => 
-				a + (
-					!b.hidden 
-						? b.width || b.name.length * 18 + 50
-						: self.hiddenColumnSize), 
-				0);
-			return result;
-		},
-
-		hideColumn(column, event) {
-			column.hidden = true;
 			this.$forceUpdate();
 		},
 
-		showColumn(column, event) {
-			column.hidden = false;
-			this.$forceUpdate();
-		},
-
-		selectFilter(column, mode) {
-			column.filter = this.filteringModes[mode];
-			if (column.filter.single || column.filtrableValue) {
-				this.$forceUpdate();
+		scroll(evt, el) {
+			if (window.scrollY > el.offsetTop) {
+				this.state.fixedHeader = true;
 			}
-		},
-
-		selectValueForFilter(column, filtrableValue) {
-			if (column.filter) {
-				column.filtrableValue = filtrableValue;
-				this.forceUpdate();
+			else {
+				this.state.fixedHeader = false;
 			}
-		},
-
-		forceUpdate() {
-			this.state.recalculate = -this.state.recalculate;
-			this.$forceUpdate();
-		},
-
-		filter(item) {
-			for (let i = 0; i < this.columnsInfo.length; i++) {
-				let column = this.columnsInfo[i];
-				if (column.filter) {
-					if (column.filter.handler) {
-						return column.filter.handler(
-							this.getTypedValue(item[column.id], column.type), 
-							this.getTypedValue(column.filtrableValue, column.type));	
-					}
-				}
+			if (this.state.fixedHeaderCache !== this.state.fixedHeader) {
+				this.forceUpdate(false);
 			}
-			return true;
-		},
-
-		clearFilter(column) {
-			column.filter = null;
-			column.filtrableValue = null;
-			this.forceUpdate();
+			this.state.fixedHeaderCache = this.state.fixedHeader;
 		}
 	}
 }

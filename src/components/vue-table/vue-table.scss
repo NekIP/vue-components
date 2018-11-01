@@ -4,7 +4,16 @@ $rotate-angle: 180deg;
 .vue-table {
 	font-family: 'Open Sans', sans-serif;
 	font-size: 12px;
-	width: 100%;
+
+	[draggable] {
+		-moz-user-select: none;
+		-khtml-user-select: none;
+		-webkit-user-select: none;
+		user-select: none;
+		/* Required to make elements draggable in old WebKit */
+		-khtml-user-drag: element;
+		-webkit-user-drag: element;
+	}
 
 	div.vertical {
 		transform: rotate(90deg);
@@ -17,12 +26,49 @@ $rotate-angle: 180deg;
 	div.vertical {
 		letter-spacing: 6px;
 		font-size: 14px;
+		@media screen and (max-width: 1025px) {
+			font-size: 1.9vh;
+		}
+		@media screen and (max-width: 1025px) and (orientation: landscape) {
+			font-size: 1.8vw;
+		}
 		font-weight: 600;
 		white-space:nowrap;
 		color: #c7c7c7;
 	}
 
+	.fixed-header {
+		position: fixed;
+		top: 0;
+		z-index: 1000;
+	}
+
+	.false-header {
+		width: 100%;
+		overflow: visible;
+
+		.table-container {
+			min-height: 0px;
+			overflow: visible;
+
+			.header {
+				display: flex;
+				flex-direction: row;
+				overflow: visible;
+			}
+		}
+	}
+
 	.group-area {
+		@media screen and (min-width: 1025px) {
+			font-size: 12px;
+		}
+		@media screen and (max-width: 1025px) {
+			font-size: 1.93vh;
+		}
+		@media screen and (max-width: 1025px) and (orientation: landscape) {
+			font-size: 1.8vw;
+		}
 		background-color: #415090;
 		border-radius: 3px 3px 0 0;
 		border-color: #e6e6e6;
@@ -35,7 +81,6 @@ $rotate-angle: 180deg;
 		cursor: default;
 		display: flex;
 		flex-direction: row; 
-
 
 		.group-item {
 			display: flex;
@@ -52,11 +97,11 @@ $rotate-angle: 180deg;
 			-webkit-user-select: none;
 			text-shadow: 1px 1px rgba(0,0,0,.14);
 			cursor: pointer;
+			vertical-align: center;
 			
 			.ungroup {
 				color: rgba(200, 200, 200, 0.637);
 				margin: 4px 2px 0px 6px;
-				font-size: 14px;
 				cursor: pointer;
 
 				&:hover {
@@ -65,9 +110,9 @@ $rotate-angle: 180deg;
 			}
 
 			.sort-icon {
-				width: 15px;
-				height: 15px;
-				margin-right: 5px;
+				width: 1em;
+				height: 1em;
+				margin-right: 0.5em;
 				padding: 4px 5px 0 2px;
 			}
 		}
@@ -75,8 +120,15 @@ $rotate-angle: 180deg;
 
 	.paging {
 		padding-top: 3px;
+		padding-bottom: 1em;
+		@media screen and (max-width: 1025px) {
+			font-size: 1.65vh;
+		}
+		@media screen and (max-width: 1025px) and (orientation: landscape) {
+			font-size: 1.6vw;
+		}
 		width: 100%;
-		height: 40px;
+		height: auto;
 		color: #444;
 		padding-left: 20px;
 		background-color: #fafafa;
@@ -84,7 +136,6 @@ $rotate-angle: 180deg;
 		border-color: #e6e6e6;
 		-webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
 		box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
-		line-height: 2.3em;
 		border-width: 1px;
 		white-space: normal;
 		clear: both;
@@ -92,78 +143,116 @@ $rotate-angle: 180deg;
 		border-style: solid;
 		display: flex;
 		flex-direction: row;
+		flex-wrap: wrap;
 
-		.paging-select {
-			height: 29px;
-			border-width: 0px;
-			border-top: 1px solid #3348a700;
-			border-left: 1px solid #86868691;
-			padding-left: 15px;
-			border-radius: 0px 0px 3px 3px;
-			background: rgba(255, 255, 255, 0);
-			font-size: 15px;
-			flex-grow: 0;
-
-			&:hover {
-				background: rgba(233, 233, 233, 0.555);
+		.arrows {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			@media screen and (min-width: 1025px) {
+				flex-grow: 1;
+			}
+			@media screen and (max-width: 1025px) {
+				flex-grow: 3;
+				justify-content: space-evenly;
 			}
 
-			&:focus {
-				outline: 0;
-				background: rgb(255, 255, 255);
-			}
-
-			option:hover {
-				background: red;
-				color: rgb(255, 255, 255);
+			.paging-button {
+				width: 2.5em;
+				@media screen and (max-width: 1025px) {
+					flex-grow: 3;
+					justify-content: space-evenly;
+					width: 2em;
+				}
+				@media screen and (max-width: 400px) {
+					flex-grow: 3;
+					justify-content: space-evenly;
+					width: 1em;
+				}
+				height: 2.5em;
+				padding: 0.25em 0.25em 0.25em 0.25em;
+				border-width: 0px;
+				border-top: 1px solid #3348a700;
+				border-radius: 0px 0px 3px 3px;
+				background: rgba(255, 255, 255, 0);
+				-webkit-box-shadow: none;
+				box-shadow: none;
+				flex-grow: 0;
+	
+				&.selected {
+					border-top: 1px solid #3349a7;
+					background: rgba(233, 233, 233, 0.555);
+				}
+	
+				&:hover {
+					background: rgba(233, 233, 233, 0.555);
+				}
+	
+				&:disabled,
+				&[disabled] {
+					color: #c7c7c7;
+				}
+	
+				&:focus {
+					outline:0;
+				}
 			}
 		}
 
-		.paging-button {
-			width: 29px;
-			height: 29px;
-			border-width: 0px;
-			border-top: 1px solid #3348a700;
-			border-radius: 0px 0px 3px 3px;
-			background: rgba(255, 255, 255, 0);
-			-webkit-box-shadow: none;
-			box-shadow: none;
-			flex-grow: 0;
 
-			&.selected {
-				border-top: 1px solid #3349a7;
-				background: rgba(233, 233, 233, 0.555);
+		.hints {
+			display: flex;
+			flex-direction: row;
+			@media screen and (min-width: 1025px) {
+				flex-grow: 16;
+			}
+			@media screen and (max-width: 1025px) {
+				flex-grow: 12;
 			}
 
-			&:hover {
-				background: rgba(233, 233, 233, 0.555);
+			.paging-select-hint {
+				padding-top: 5px;
+				font-size: 1.2em;
+				font-weight: 400;
+				color: #666666;
+				vertical-align: center;
 			}
 
-			&:disabled,
-			&[disabled] {
-				color: #c7c7c7;
+			.paging-info {
+				padding-top: 0.35em;
+				padding-right: 30px;
+				font-weight: 400;
+				color: #9b9b9b;
+				text-align: right;
+				flex-grow: 2;
+				vertical-align: center;
 			}
 
-			&:focus {
-				outline:0;
+			.paging-select {
+				height: auto;
+				border-width: 0px;
+				border-top: 1px solid #3348a700;
+				border-left: 1px solid #86868691;
+				padding-left: 15px;
+				border-radius: 0px 0px 0.2em 0.2em;
+				background: rgba(255, 255, 255, 0);
+				font-size: 1.25em;
+				flex-grow: 0;
+	
+				&:hover {
+					background: rgba(233, 233, 233, 0.555);
+				}
+	
+				&:focus {
+					outline: 0;
+					background: rgb(255, 255, 255);
+				}
+	
+				option:hover {
+					background: red;
+					color: rgb(255, 255, 255);
+				}
 			}
-		}
-
-		.paging-select-hint {
-			padding-top: 1px;
-			font-size: 14px;
-			font-weight: 400;
-			color: #666666;
-			flex-grow: 1;
-		}
-
-		.paging-info {
-			padding-top: 1px;
-			padding-right: 30px;
-			font-size: 12px;
-			font-weight: 400;
-			color: #9b9b9b;
-			flex-grow: 0;
 		}
 	}
 
@@ -178,6 +267,12 @@ $rotate-angle: 180deg;
 			table-layout: fixed;
 			font-family: 'Open Sans', sans-serif;
 			font-size: 12px;
+			@media screen and (max-width: 1025px) {
+				font-size: 1.6vh;
+			}
+			@media screen and (max-width: 1025px) and (orientation: landscape) {
+				font-size: 1.6vw;
+			}
 			margin-bottom: 0px;
 			border-right: 1px solid #77777750;
 			border-left: 1px solid #77777750;	
@@ -203,8 +298,8 @@ $rotate-angle: 180deg;
 						padding: 0px;
 
 						.rol-up {
-							padding: 0 5px 0 0;
-							font-size: 15px;
+							padding: 0 0.5em 0 0;
+							font-size: 1.2em;
 
 							&:hover {
 								color: #415090;
@@ -222,11 +317,15 @@ $rotate-angle: 180deg;
 						}
 
 						.filter {
-							font-size: 16px;
+							font-size: 1.2em;
 
 							&:hover {
 								color: #415090;
 							}
+						}
+
+						.filter-enabled {
+							color: rgb(255, 156, 74);
 						}
 
 						.filter-container {
@@ -234,20 +333,67 @@ $rotate-angle: 180deg;
 							color: black;
 							font-weight: 200;
 							text-shadow: none;
+							text-transform: none;
 
 							.filter-window {
+								width: 200px;
 								position: absolute;
 								padding: 10px;
-								background: white;
+								background: rgb(255, 255, 255);
 								box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);
 								border-radius: 0 0 5px 5px;
 								top: 22px;
 								left: -30px;
+
+								.filter-mods {
+									width: 100%;
+								}
+	
+								.expected-value-input {
+									width: 100%;
+									background: white;
+									color: rgb(59, 59, 59);
+									border-width: 0px;
+									border-bottom: 1px solid #77777750;
+									padding-bottom: 2px;
+									margin-bottom: 2px;
+									margin-top: 2px;
+	
+									&:active, &:focus {
+										outline: none;
+									}
+								}
+	
+								.clear-button {
+									width: 100%;
+									height: 20px;
+									background: white;
+									color: rgb(59, 59, 59);
+									border-width: 0;
+									  border-radius: 0 0 2px 2px;
+									  box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.25);
+									-webkit-transition: box-shadow 0.2s ease-out;
+									-moz-transition: box-shadow 0.2s ease-out;
+									-o-transition: box-shadow 0.2s ease-out;
+									transition: box-shadow 0.2s ease-out;
+	
+									&:hover {
+										color: steelblue;
+									}
+	
+									&:active, &:focus {
+										outline: none;
+									}
+	
+									&:active {
+										box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.02);
+									}
+								}
 							}
 						}
 
 						.group {
-							font-size: 16px;
+							font-size: 1.2em;
 							margin: 0 5px 0 0;
 						}
 
@@ -278,6 +424,7 @@ $rotate-angle: 180deg;
 						width: 100%;
 
 						.hint {
+							font-size: 1.2em;
 							display: inline-block;
 							position: absolute;
 							top: 2px;
@@ -369,6 +516,12 @@ $rotate-angle: 180deg;
 				td {
 					line-height: 1em;
 					font-size: 11px;
+					@media screen and (max-width: 1025px) {
+						font-size: 1.6vh;
+					}
+					@media screen and (max-width: 1025px) and (orientation: landscape) {
+						font-size: 1.6vw;
+					}
 					padding: .4em .6em;
 					overflow: hidden;
 					vertical-align: middle;
@@ -381,14 +534,41 @@ $rotate-angle: 180deg;
 
 				th {
 					background-color: #f2f2f2;
-					/*border-style: solid;
-					border-color: #ccc;
-					border-width: 1px 0 1px 1px;*/
+					border-width: 0;
+				}
+
+				.th-triangle {
+					border-top: 1px solid #ccc;
+					border-left: 1px solid #ccc;
+				}
+
+				.th-header {
+					/*border-top: 1px solid #ccc;*/
 					border-bottom: 1px solid #ccc;
+					padding-left: 2px;
+				}
+
+				.th-left {
+					border-left: 1px solid #ccc;
+					font-size: 16px;
+					@media screen and (max-width: 1025px) {
+						font-size: 1.3em;
+					}
+					text-align: right;
+					color: rgb(126, 126, 126);
+
+					.hide-group {
+						width: 15px;
+						height: 20px;
+					}
+
+					.hide-group:hover {
+						color: sandybrown;
+					}
 				}
 
 				.lighting-row:hover {
-					td {
+					.cell {
 						background-color: #ececec;
 					}
 				}
@@ -408,7 +588,7 @@ $rotate-angle: 180deg;
 					text-overflow: ellipsis;
 					border-style: solid;
 					border-color: #ccc;
-					border-width: 0 0 1px 1px;
+					border-width: 1px 0 1px 1px;
 					background: #3349a7;
 					background-color: #f2f2f2;
 					font-weight: 700;

@@ -1,5 +1,6 @@
 <html>
 	<head>
+		<meta charset="utf-8">
 		<script src="http://code.jquery.com/jquery-3.3.1.min.js"
 				integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
 				crossorigin="anonymous">
@@ -10,34 +11,13 @@
 		<link rel="stylesheet" href="hint.min.css">
 		<link rel="stylesheet" href="style.css">
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-		<script>
-			/*gg*/
-			class Agregator {
-				static summ(array) {
-					return array.reduce((a, b) => a + b, 0);
-				}
-
-				static deff(array) {
-					return array.reduce((a, b) => a - b, 0);
-				}
-
-				static mull(array) {
-					return array.reduce((a, b) => a * b, 0);
-				}
-
-				static min(array) {
-					return Math.min.apply(null, array);
-				}
-
-				static max(array) {
-					return Math.max.apply(null, array);
-				}
-			}
-		</script>
+		<script src="drag-drop-touch.js"></script>
 	</head>
 	<body>
-		<div id='app'>
-	
+		<noscript>
+			JS Doesn't Work
+		</noscript>
+		<div id='app' class="col-sm-12">
 			<vue-select 
 				default-title="Merchants" 
 				multiple-selected-title-chunk="Accounts"
@@ -48,41 +28,35 @@
 					{{ (selectedIds.length == 1) ? selectedIds[0] : `count: ${selectedIds.length}`}}
 				</span>
 			</vue-select>
-	
-			<vue-datepicker 
-				title="Select date range" 
-				:range-keys="['TODAY', 'LAST_30_DAYS', 'LAST_WEEK', 'CUSTOM_DATE_RANGE']" 
-				:allow-custom-date-range="true">
-				<span slot="triggerContainer"  slot-scope="{ selectedRange }"> 
-					<div class="btn btn-default">
-						{{ selectedRange.toString() }}
-					</div>
-				</span>
-			</vue-datepicker>
-
-	
+			<div v-if="showChart">
+				<vue-chart :data="getDataForChart()" :typeXAxis="'time'"></vue-chart>
+			</div>
+			<button @click="showChart = true">test data draw</button>
 			<vue-table
 				:items="data"
 				:columns="columns"
-				:filtrable="false"
+				:filtrable="true"
 				:sortable="true"
-				:groupable="true">
-				<template slot="amount-header">
+				:groupable="true"
+				:resizable="true"
+				:hidable="true">
+				<span slot="amount-header">
 					Value
-				</template>
-				<template slot="amount-column" slot-scope="{ value }">
+				</span>
+				<span slot="amount-column" slot-scope="{ value }">
 					<span :style="{ color: +value > 0 ? 'green' : 'red' }">
 						{{value}}
 					</span>
-				</template>
-				<template slot="amount-footer" slot-scope="{ cells }">
-					Total: {{Agregator.summ(cells)}}
-				</template>
+				</span>
+				<span slot="amount-footer" slot-scope="{ cells }">
+					Total: {{2}}
+				</span>
 
-				<template slot="currency-group" slot-scope="{ value, cells }">
+				<span slot="currency-group" slot-scope="{ value, cells }">
 					Cur: {{value}} / {{cells.length}}
-				</template>
+				</span>
 			</vue-table>
+			<div class="col-sm-12" style="height: 300px"></div>
 		</div>
 		<script src="src/dist/build.js"></script>
 	</body>
