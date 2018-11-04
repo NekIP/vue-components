@@ -6,7 +6,7 @@ export function generateId(length = 8) {
 	let id = "";
 	for (let i = 0; i < length; i++) {
 	   let index = getRandomInt(0, 9);
-	   id += index;	 
+	   id += index;
 	}
 	return id;
 }

@@ -7,7 +7,7 @@
 <script>
 	import Chart from 'chart.js';
 	import { generateId } from '../../scripts/common/id-generator.js';
-	console.log(generateId());
+	
 	export default {
 		name: 'vue-chart',
 		props: {
